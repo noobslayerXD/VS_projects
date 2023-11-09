@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34202.233
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ToneGenerator", "ToneGenerator\ToneGenerator.vcxproj", "{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Debug|x64.ActiveCfg = Debug|x64
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Debug|x64.Build.0 = Debug|x64
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Debug|x86.ActiveCfg = Debug|Win32
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Debug|x86.Build.0 = Debug|Win32
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Release|x64.ActiveCfg = Release|x64
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Release|x64.Build.0 = Release|x64
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Release|x86.ActiveCfg = Release|Win32
+		{9E3530D9-4061-4DD0-BD57-BEC488D29F5F}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {71AF111F-FC31-4A7B-B022-B41B2919A699}
+	EndGlobalSection
+EndGlobal
