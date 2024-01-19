@@ -4,11 +4,13 @@
 Person::Person(const std::string& navn, const char* personnummer, int vaccineStatus)
 {
     navn_ = navn;
-    personnummer_ = personnummer;
+    strcpy_s(personnummer_, 12, personnummer);
     vaccineStatus_ = (0 <= vaccineStatus && vaccineStatus <= 2) ? vaccineStatus : 0;
 }
 
-string Person::getNavn() const
+//Person::~Person(){}
+
+std::string Person::getNavn() const
 {
     return navn_;
 }
@@ -32,6 +34,19 @@ void Person::print() const
     }
     else
     {
-        std::cout << "Vaccineret " << getVaccineStatus() << ". gang" << std::endl;
+        std::cout << "Vaccineret " << getVaccineStatus() << " gang" << std::endl;
     }
+}
+
+Person& Person::operator++() {
+    if (vaccineStatus_ < 2)
+        vaccineStatus_++;
+    return *this;
+}
+Person Person::operator++(int) {
+    Person temp = *this;
+
+    if (vaccineStatus_ < 2)
+        vaccineStatus_++;
+    return temp;
 }
