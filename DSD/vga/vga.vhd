@@ -1,0 +1,131 @@
+-- Note source modified to DE10-lite
+--
+-- Original Template for VGA output by: Rene Kristensen
+-- This design template uses gated clocks which generally are bad design practice.
+-- This implies that the template design is not optimized for speed and will only serve for educational purpose. 
+
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.numeric_std.ALL;
+USE work.ALL;
+
+ENTITY vga IS
+	PORT (
+		clk, reset       : IN Std_logic;
+		red, green, blue : OUT Std_logic_vector(3 DOWNTO 0);
+		hsync, vsync     : OUT Std_logic
+	);
+END vga;
+
+ARCHITECTURE testGenerator OF vga IS
+
+	-- horizontal Timing constants for 640 x 480 @ 60Hz
+	CONSTANT hFrontPorch : Natural := 16; -- units are number of 25 MHz clocks
+	CONSTANT hBackPorch  : Natural := 48;
+	CONSTANT hDataLen    : Natural := 640;
+	CONSTANT hSynWidth   : Natural := 96;
+
+	-- vertical Timing constants for 640 x 480 @ 60Hz 
+	CONSTANT vFrontPorch : Natural := 10; -- units are number of lines
+	CONSTANT vBackPorch  : Natural := 33;
+	CONSTANT vDataLen    : Natural := 480;
+	CONSTANT vSynWidth   : Natural := 2;
+
+	-- signal declaration
+	SIGNAL hSyncCounter, vSyncCounter : Integer RANGE 0 TO 1023; -- contrain integer to 10 bit.
+	SIGNAL hSyncOut, vSyncOut, clk25  : Std_logic;
+
+	-- attributes ensuring the signals defined below are not reduced away before simulation.
+	ATTRIBUTE keep                 : Boolean;        -- don't reduce vSyncCounter and hSyncCounter signals away, so we can watch these signals i simulator
+	ATTRIBUTE keep OF vSyncCounter : SIGNAL IS true; --   ||   --
+	ATTRIBUTE keep OF hSyncCounter : SIGNAL IS true; --   ||   --
+
+	-- INSERT YOUR PROCEDURE HERE.
+	-- Your procedure should circular increment syncCounter, produce blanking and sync output.  
+	PROCEDURE syncGenerator(SIGNAL SyncCounter : INOUT Integer RANGE 0 TO 1023;
+	SIGNAL SyncOut                             : OUT Std_logic;
+	FrontPorch                                 : IN Natural;
+	BackPorch                                  : IN Natural;
+	DataLen                                    : IN Natural;
+	SynWidth                                   : IN Natural) IS
+
+BEGIN
+
+	-- incrementerer syncCounter
+	syncCounter <= syncCounter + 1;
+	-- tester syncCounter, hvor man starter i 0.0
+	-- backPorch området i VGA timing
+	IF (syncCounter <= backPorch) THEN
+		syncOut         <= '0';
+		-- dataLen området i VGA timing
+	ELSIF (syncCounter >= backPorch AND syncCounter <= (backPorch + dataLen)) THEN
+		syncOut                                         <= '1';
+		-- frontPorch området i VGA timing
+	ELSIF (syncCounter > (backPorch + dataLen) AND syncCounter < (backPorch + dataLen + frontPorch)) THEN
+		syncOut <= '1';
+		-- synWidth området for VGA timing
+	ELSIF (syncCounter >= (backPorch + dataLen + frontPorch) AND syncCounter <= (backPorch + dataLen + frontPorch + synWidth)) THEN
+		syncOut                                                                  <= '0';
+	ELSE
+		-- starter på en ny linje af billedet 
+		syncCounter <= 0;
+	END IF;
+END;
+
+BEGIN
+
+clkdiv : PROCESS (reset, clk) -- creates a 25 MHz pixel clock (clk25) from a 50 MHz input (clk).
+BEGIN
+	IF (reset = '0') THEN
+		clk25 <= '0';
+	ELSIF rising_edge(clk) THEN
+		clk25 <= NOT clk25;
+	END IF;
+END PROCESS;
+
+-- horizontal process using the generic syncGenerator function to generate a proper hsync pulse.
+hsyn : PROCESS (reset, clk25) -- reacts on reset and 25 MHz clock.
+BEGIN
+	IF reset = '0' THEN
+		hSyncCounter <= 0;
+	ELSIF rising_edge(clk25) THEN
+		-- generates active low pulse after every line
+		syncGenerator(hSyncCounter, hSyncOut, hFrontPorch, hBackPorch, hDataLen, hSynWidth);
+	END IF;
+END PROCESS;
+
+-- vertical process using the generic syncGenerator function to generate a proper vsync pulse.
+vsyn : PROCESS (reset, hSyncOut) -- reacts on reset and hsync (meaning every line).
+BEGIN
+	IF reset = '0' THEN
+		vSyncCounter <= 0;
+	ELSIF rising_edge(hSyncOut) THEN
+		-- generates active low pulse after every picture
+		syncGenerator(vSyncCounter, vSyncOut, vFrontPorch, vBackPorch, vDataLen, vSynWidth);
+	END IF;
+END PROCESS;
+
+color : PROCESS (reset, hSyncCounter, vSyncCounter)
+BEGIN
+    IF ((hSyncCounter > hBackPorch) AND (hSyncCounter <= hBackPorch + 277)) THEN
+        -- Green
+        red   <= (OTHERS => '1');
+        green <= (OTHERS => '0');
+        blue  <= (OTHERS => '0');
+    ELSIF ((hSyncCounter > hBackPorch + 277) AND (hSyncCounter <= hBackPorch + 491)) THEN
+        -- White
+        red   <= (OTHERS => '0');
+        green <= (OTHERS => '0');
+        blue  <= (OTHERS => '1');
+    ELSE
+        -- Red
+        red   <= (OTHERS => '0');
+        green <= (OTHERS => '1');
+        blue  <= (OTHERS => '0');
+    END IF;
+END PROCESS;
+
+vsync <= vSyncOut; -- connect vsync to entity
+hsync <= hSyncOut; -- connect hsync to entity
+
+END testGenerator;

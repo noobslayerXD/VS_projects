@@ -1,0 +1,28 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity bin2hex is
+	
+	port
+	(
+		-- Input ports
+		bin	: in  std_logic_vector(3 downto 0);
+		
+
+		-- Output ports
+		seg	: out std_logic_vector(6 downto 0)
+	);
+end bin2hex;
+
+
+architecture bin2hex_impl of bin2hex is
+
+
+
+begin
+
+	
+
+
+end bin2hex_impl;

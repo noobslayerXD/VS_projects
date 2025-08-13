@@ -1,0 +1,85 @@
+Restore Archived Project report for code_lock
+Wed Nov 22 08:29:30 2023
+Quartus Prime Version 21.1.1 Build 850 06/23/2022 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Restore Archived Project Summary
+  3. Restore Archived Project Messages
+  4. Files Restored
+  5. Files Not Restored
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2022  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details, at
+https://fpgasoftware.intel.com/eula.
+
+
+
++-------------------------------------------------------------------------+
+; Restore Archived Project Summary                                        ;
++---------------------------------+---------------------------------------+
+; Restore Archived Project Status ; Successful - Wed Nov 22 08:29:30 2023 ;
+; Revision Name                   ; code_lock                             ;
+; Top-level Entity Name           ; synch                                 ;
+; Family                          ; Cyclone II                            ;
++---------------------------------+---------------------------------------+
+
+
++-----------------------------------+
+; Restore Archived Project Messages ;
++-----------------------------------+
+Warning (13177): Your design targets the device family "Cyclone II". The specified family is not a valid device family, is not installed, or is not supported in this version of the Quartus Prime software. If you restored a project from an archived version, your project was successfully restored, but you still must specify or install a supported device family.
+Info (13198): Your project was successfully restored, but the device information in the Flow Summary report cannot be updated until the design targets a supported device family.
+Info: Successfully restored 'C:/Users/Jacob/Downloads/code_lock_template.qar' into the 'C:/Users/Jacob/Downloads/code_lock_template_restored/' directory
+Info: Generated report 'code_lock.restore.rpt'
+Info (23030): Evaluation of Tcl script c:/intelfpga_lite/21.1/quartus/common/tcl/apps/qpm/qar.tcl was successful
+Info: Quartus Prime Shell was successful. 0 errors, 2 warnings
+    Info: Peak virtual memory: 4831 megabytes
+    Info: Processing ended: Wed Nov 22 08:29:30 2023
+    Info: Elapsed time: 00:00:02
+    Info: Total CPU time (on all processors): 00:00:00
+
+
++------------------------------------------------------+
+; Files Restored                                       ;
++------------------------------------------------------+
+; File Name                                            ;
++------------------------------------------------------+
+; assignment_defaults.qdf                              ;
+; code_lock.qpf                                        ;
+; code_lock.qsf                                        ;
+; code_lock_assignment_defaults.qdf                    ;
+; code_lock_simple.vhd                                 ;
+; db/code_lock.sim.vwf                                 ;
+; incremental_db/compiled_partitions/code_lock.db_info ;
+; synch.vhd                                            ;
+; synch.vwf                                            ;
++------------------------------------------------------+
+
+
++--------------------+
+; Files Not Restored ;
++--------------------+
+; File Name          ;
++--------------------+
+
+

@@ -1,0 +1,60 @@
+|vga_test
+clock_50 => vga:vga_comp.clk
+key0 => vga:vga_comp.reset
+vga_hs <= vga:vga_comp.hsync
+vga_vs <= vga:vga_comp.vsync
+vga_b[0] <= vga:vga_comp.blue[0]
+vga_b[1] <= vga:vga_comp.blue[1]
+vga_b[2] <= vga:vga_comp.blue[2]
+vga_b[3] <= vga:vga_comp.blue[3]
+vga_g[0] <= vga:vga_comp.green[0]
+vga_g[1] <= vga:vga_comp.green[1]
+vga_g[2] <= vga:vga_comp.green[2]
+vga_g[3] <= vga:vga_comp.green[3]
+vga_r[0] <= vga:vga_comp.red[0]
+vga_r[1] <= vga:vga_comp.red[1]
+vga_r[2] <= vga:vga_comp.red[2]
+vga_r[3] <= vga:vga_comp.red[3]
+
+
+|vga_test|vga:vga_comp
+clk => clk25.CLK
+reset => hSyncCounter[0].ACLR
+reset => hSyncCounter[1].ACLR
+reset => hSyncCounter[2].ACLR
+reset => hSyncCounter[3].ACLR
+reset => hSyncCounter[4].ACLR
+reset => hSyncCounter[5].ACLR
+reset => hSyncCounter[6].ACLR
+reset => hSyncCounter[7].ACLR
+reset => hSyncCounter[8].ACLR
+reset => hSyncCounter[9].ACLR
+reset => vSyncCounter[0].ACLR
+reset => vSyncCounter[1].ACLR
+reset => vSyncCounter[2].ACLR
+reset => vSyncCounter[3].ACLR
+reset => vSyncCounter[4].ACLR
+reset => vSyncCounter[5].ACLR
+reset => vSyncCounter[6].ACLR
+reset => vSyncCounter[7].ACLR
+reset => vSyncCounter[8].ACLR
+reset => vSyncCounter[9].ACLR
+reset => clk25.ACLR
+reset => hSyncOut.ENA
+reset => vSyncOut.ENA
+red[0] <= color.DB_MAX_OUTPUT_PORT_TYPE
+red[1] <= color.DB_MAX_OUTPUT_PORT_TYPE
+red[2] <= color.DB_MAX_OUTPUT_PORT_TYPE
+red[3] <= color.DB_MAX_OUTPUT_PORT_TYPE
+green[0] <= green.DB_MAX_OUTPUT_PORT_TYPE
+green[1] <= green.DB_MAX_OUTPUT_PORT_TYPE
+green[2] <= green.DB_MAX_OUTPUT_PORT_TYPE
+green[3] <= green.DB_MAX_OUTPUT_PORT_TYPE
+blue[0] <= blue.DB_MAX_OUTPUT_PORT_TYPE
+blue[1] <= blue.DB_MAX_OUTPUT_PORT_TYPE
+blue[2] <= blue.DB_MAX_OUTPUT_PORT_TYPE
+blue[3] <= blue.DB_MAX_OUTPUT_PORT_TYPE
+hsync <= hSyncOut.DB_MAX_OUTPUT_PORT_TYPE
+vsync <= vSyncOut.DB_MAX_OUTPUT_PORT_TYPE
+
+

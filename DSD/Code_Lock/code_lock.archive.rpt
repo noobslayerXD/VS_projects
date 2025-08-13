@@ -1,0 +1,91 @@
+Archive Project report for code_lock
+Wed Dec  6 13:38:03 2023
+Quartus Prime Version 21.1.1 Build 850 06/23/2022 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Archive Project Summary
+  3. Archive Project Messages
+  4. Files Archived
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2022  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details, at
+https://fpgasoftware.intel.com/eula.
+
+
+
++----------------------------------------------------------------+
+; Archive Project Summary                                        ;
++------------------------+---------------------------------------+
+; Archive Project Status ; Successful - Wed Dec  6 13:38:03 2023 ;
+; Revision Name          ; code_lock                             ;
+; Top-level Entity Name  ; code_lock_tester                      ;
+; Family                 ; MAX 10                                ;
++------------------------+---------------------------------------+
+
+
++--------------------------+
+; Archive Project Messages ;
++--------------------------+
+Info: File Set 'Source control' contains:
+    Info: Project source and settings files
+    Info: Automatically detected source files
+Warning: Hierarchical Platform Designer systems and custom IP components(_hw.tcl and associated files) are not archived by the Quartus Archiver
+Info: Archive will store files relative to the closest common parent directory
+Info (13213): Using common directory C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/
+Info: ----------------------------------------------------------
+Info: ----------------------------------------------------------
+Info: Generated archive 'C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qar'
+Info: ----------------------------------------------------------
+Info: ----------------------------------------------------------
+Info: Generated report 'code_lock.archive.rpt'
+Info (23030): Evaluation of Tcl script c:/intelfpga_lite/21.1/quartus/common/tcl/apps/qpm/qar.tcl was successful
+Info: Quartus Prime Shell was successful. 0 errors, 1 warning
+    Info: Peak virtual memory: 4843 megabytes
+    Info: Processing ended: Wed Dec  6 13:38:03 2023
+    Info: Elapsed time: 00:00:01
+    Info: Total CPU time (on all processors): 00:00:01
+
+
++-----------------------------------+
+; Files Archived                    ;
++-----------------------------------+
+; File Name                         ;
++-----------------------------------+
+; assignment_defaults.qdf           ;
+; code_lock.qpf                     ;
+; code_lock.qsf                     ;
+; code_lock_assignment_defaults.qdf ;
+; code_lock_simple.vhd              ;
+; code_lock_simple_fsm.vhd          ;
+; code_lock_tester.vhd              ;
+; db/code_lock.sim.vwf              ;
+; mee_moo_tester.vhd                ;
+; synch.vhd                         ;
+; synch.vwf                         ;
+; test.vwf                          ;
+; three_process_fsm_template.vhd    ;
+; Waveform.vwf                      ;
+; Wrong.vhd                         ;
++-----------------------------------+
+
+

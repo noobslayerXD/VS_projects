@@ -1,0 +1,32 @@
+Quartus Prime Archive log --	C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qarlog
+
+Archive:	C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qar
+Date:		Wed Dec  6 13:38:03 2023
+Quartus Prime		21.1.1 Build 850 06/23/2022 SJ Lite Edition
+
+	=========== Files Selected: ===========
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/Waveform.vwf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/Wrong.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/assignment_defaults.qdf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qpf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qsf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_assignment_defaults.qdf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_simple.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_simple_fsm.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_tester.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/db/code_lock.sim.vwf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/mee_moo_tester.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/synch.vhd
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/synch.vwf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/test.vwf
+C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/three_process_fsm_template.vhd
+	======= Total: 15 files to archive =======
+
+	================ Status: ===============
+All files archived successfully.
+
+
+******* Archived project restoration attempt on Tue Jan 23 08:58:51 2024
+Source archive file:	C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qar
+Archive was extracted into	C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_restored/
+		 - successfully.

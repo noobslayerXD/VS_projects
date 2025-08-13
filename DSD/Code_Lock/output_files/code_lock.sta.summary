@@ -1,0 +1,77 @@
+------------------------------------------------------------
+Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Slow 1200mV 85C Model Setup 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : -3.240
+TNS   : -3.240
+
+Type  : Slow 1200mV 85C Model Setup 'CLOCK_50'
+Slack : -2.398
+TNS   : -15.785
+
+Type  : Slow 1200mV 85C Model Hold 'CLOCK_50'
+Slack : 0.347
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 2.813
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'CLOCK_50'
+Slack : -3.000
+TNS   : -22.642
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 0.409
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Setup 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : -2.909
+TNS   : -2.909
+
+Type  : Slow 1200mV 0C Model Setup 'CLOCK_50'
+Slack : -2.132
+TNS   : -13.667
+
+Type  : Slow 1200mV 0C Model Hold 'CLOCK_50'
+Slack : 0.311
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 2.596
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'CLOCK_50'
+Slack : -3.000
+TNS   : -22.642
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 0.413
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Setup 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : -1.031
+TNS   : -1.031
+
+Type  : Fast 1200mV 0C Model Setup 'CLOCK_50'
+Slack : -0.658
+TNS   : -1.966
+
+Type  : Fast 1200mV 0C Model Hold 'CLOCK_50'
+Slack : 0.148
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 1.418
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'CLOCK_50'
+Slack : -3.000
+TNS   : -17.446
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state.Unlocked'
+Slack : 0.459
+TNS   : 0.000
+
+------------------------------------------------------------

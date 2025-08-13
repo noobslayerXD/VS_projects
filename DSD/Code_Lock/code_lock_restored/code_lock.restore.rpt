@@ -1,0 +1,90 @@
+Restore Archived Project report for code_lock
+Tue Jan 23 08:58:51 2024
+Quartus Prime Version 21.1.1 Build 850 06/23/2022 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Restore Archived Project Summary
+  3. Restore Archived Project Messages
+  4. Files Restored
+  5. Files Not Restored
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2022  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details, at
+https://fpgasoftware.intel.com/eula.
+
+
+
++-------------------------------------------------------------------------+
+; Restore Archived Project Summary                                        ;
++---------------------------------+---------------------------------------+
+; Restore Archived Project Status ; Successful - Tue Jan 23 08:58:51 2024 ;
+; Revision Name                   ; code_lock                             ;
+; Top-level Entity Name           ; code_lock_tester                      ;
+; Family                          ; MAX 10                                ;
++---------------------------------+---------------------------------------+
+
+
++-----------------------------------+
+; Restore Archived Project Messages ;
++-----------------------------------+
+Info: Successfully restored 'C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock.qar' into the 'C:/Users/Jacob/source/repos/projects/DSD/Code_Lock/code_lock_restored/' directory
+Info: Generated report 'code_lock.restore.rpt'
+Info (23030): Evaluation of Tcl script c:/intelfpga_lite/21.1/quartus/common/tcl/apps/qpm/qar.tcl was successful
+Info: Quartus Prime Shell was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 4832 megabytes
+    Info: Processing ended: Tue Jan 23 08:58:51 2024
+    Info: Elapsed time: 00:00:03
+    Info: Total CPU time (on all processors): 00:00:00
+
+
++-----------------------------------+
+; Files Restored                    ;
++-----------------------------------+
+; File Name                         ;
++-----------------------------------+
+; qar_info.json                     ;
+; Waveform.vwf                      ;
+; Wrong.vhd                         ;
+; assignment_defaults.qdf           ;
+; code_lock.qpf                     ;
+; code_lock.qsf                     ;
+; code_lock_assignment_defaults.qdf ;
+; code_lock_simple.vhd              ;
+; code_lock_simple_fsm.vhd          ;
+; code_lock_tester.vhd              ;
+; db/code_lock.sim.vwf              ;
+; mee_moo_tester.vhd                ;
+; synch.vhd                         ;
+; synch.vwf                         ;
+; test.vwf                          ;
+; three_process_fsm_template.vhd    ;
++-----------------------------------+
+
+
++--------------------+
+; Files Not Restored ;
++--------------------+
+; File Name          ;
++--------------------+
+
+

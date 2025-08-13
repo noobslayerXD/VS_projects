@@ -1,0 +1,93 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.all;
+
+entity guess_game is
+	
+	port
+	(
+		-- Input ports
+		show	: in  std_logic;
+		set	: in  std_logic;
+		input	: in	std_logic_vector(7 downto 0);
+		try	: in	std_logic;
+		
+
+		-- Output ports
+		hex1	: out std_logic_vector(6 downto 0);
+		hex10	: out std_logic_vector(6 downto 0)
+	);
+end guess_game;
+
+
+architecture guess_game_impl of guess_game is
+
+	signal secret_value :std_logic_vector( 7 downto 0);
+	signal mux2bin	: std_logic_vector(7 downto 0);
+	signal hex2mux	: std_logic_vector(13 downto 0);
+	signal comp2mux: std_logic_vector(1 downto 0);
+	signal hex2disp: std_logic_vector (13 downto 0);
+	constant lo: std_logic_vector(13 downto 0):="0000000"&"0000000";
+	constant	hi: std_logic_vector(13 downto 0):="0000000"&"0000000";
+	constant eq: std_logic_vector(13 downto 0):="0000000"&"0000000";
+
+begin
+
+Laaatch: entity work.mylatch
+	
+	port map 
+	(
+		set => set,
+		input => input,
+		set_val => secret_value
+	);
+Compare_logic: entity work.compare
+	
+	port map 
+	(
+		set_val => secret_value,
+		try_val=> input,
+		try => try,
+		compare_out => comp2mux
+	);
+Mux1: entity work.mux1
+	
+	port map 
+	(
+		show => show,
+		set_val => secret_value,
+		try_val => input,
+		mux1_out => mux2bin
+	);
+bin2hex1: entity work.bin2hex
+	
+	port map 
+	(
+		bin => mux2bin(3 downto 0),
+		seg => hex2mux(6 downto 0)
+	);
+bin2hex2: entity work.bin2hex
+	
+	port map 
+	(
+		bin => mux2bin(7 downto 4),
+		seg => hex2mux(13 downto 7)
+	);	
+	
+--- Her instantieres Mux2
+mux2: entity work.mux2
+	port map
+	(
+		lo => lo,
+		hi => hi,
+		eq	=> eq,
+		seg=> hex2mux,
+		sel=>comp2mux,
+		output=>hex2disp
+	);
+
+hex1 <= hex2disp(6 downto 0);
+hex10 <= hex2disp(13 downto 7);
+	
+end guess_game_impl;

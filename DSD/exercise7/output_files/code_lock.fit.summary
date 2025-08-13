@@ -1,0 +1,18 @@
+Fitter Status : Successful - Fri Dec  1 11:23:15 2023
+Quartus Prime Version : 21.1.1 Build 850 06/23/2022 SJ Lite Edition
+Revision Name : code_lock
+Top-level Entity Name : code_lock_tester
+Family : MAX 10
+Device : 10M50DAF484C7G
+Timing Models : Final
+Total logic elements : 26 / 49,760 ( < 1 % )
+    Total combinational functions : 24 / 49,760 ( < 1 % )
+    Dedicated logic registers : 14 / 49,760 ( < 1 % )
+Total registers : 14
+Total pins : 18 / 360 ( 5 % )
+Total virtual pins : 0
+Total memory bits : 0 / 1,677,312 ( 0 % )
+Embedded Multiplier 9-bit elements : 0 / 288 ( 0 % )
+Total PLLs : 0 / 4 ( 0 % )
+UFM blocks : 0 / 1 ( 0 % )
+ADC blocks : 0 / 2 ( 0 % )

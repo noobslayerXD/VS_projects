@@ -1,0 +1,27 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity mux1 is
+
+	port
+	(
+		-- Input ports
+		show	: in  std_logic;
+		set_val	: in  std_logic_vector(7 downto 0);
+		try_val	: in  std_logic_vector(7 downto 0);
+
+		-- Output ports
+		mux1_out	: out std_logic_vector(7 downto 0)
+	);
+end mux1;
+
+
+architecture mux1_impl of mux1 is
+
+
+begin
+
+
+end mux1_impl;
+

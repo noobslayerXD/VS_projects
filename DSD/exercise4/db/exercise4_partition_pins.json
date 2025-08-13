@@ -1,0 +1,149 @@
+{
+	"partitions" : [
+		{
+			"name" : "Top",
+			"pins" : [
+				{
+					"name" : "tsseg[0]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[1]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[2]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[3]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[4]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[5]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[6]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[7]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[8]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[9]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[10]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[11]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[12]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[13]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[14]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[15]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[16]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[17]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[18]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[19]",
+					"strict" : false
+				},
+				{
+					"name" : "tsseg[20]",
+					"strict" : false
+				},
+				{
+					"name" : "sel[0]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[0]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[1]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[2]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[3]",
+					"strict" : false
+				},
+				{
+					"name" : "sel[1]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[4]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[5]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[6]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[7]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[8]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[9]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[10]",
+					"strict" : false
+				},
+				{
+					"name" : "bin[11]",
+					"strict" : false
+				}
+			]
+		}
+	]
+}

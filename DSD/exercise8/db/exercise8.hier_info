@@ -1,0 +1,12 @@
+|tester
+SW[0] => xor_funk.IN0
+SW[0] => or_out.IN0
+SW[0] => and_out.IN0
+SW[1] => xor_funk.IN1
+SW[1] => or_out.IN1
+SW[1] => and_out.IN1
+LEDR[0] << xor_funk.DB_MAX_OUTPUT_PORT_TYPE
+LEDR[1] << or_out.DB_MAX_OUTPUT_PORT_TYPE
+LEDR[2] << and_out.DB_MAX_OUTPUT_PORT_TYPE
+
+

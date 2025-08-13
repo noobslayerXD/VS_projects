@@ -1,0 +1,17 @@
+LIBRARY IEEE;
+USE IEEE.STD_LOGIC_1164.ALL;
+USE WORK.my_gates.ALL;
+
+ENTITY tester IS
+	PORT (
+		SW : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
+		LEDR : OUT STD_LOGIC_VECTOR(2 DOWNTO 0));
+END tester;
+
+ARCHITECTURE test OF tester IS
+BEGIN
+
+	LEDR(0) <= xor_funk(SW(0), SW(1));
+	find_and_or(SW(0), SW(1), LEDR(1), LEDR(2));
+
+END test;

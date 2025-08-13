@@ -1,0 +1,107 @@
+|code_lock_tester
+CLOCK_50 => code_lock_simple:poo_poo.clk
+KEY[0] => code_lock_simple:poo_poo.reset
+KEY[1] => code_lock_simple:poo_poo.enter
+SW[0] => code_lock_simple:poo_poo.code[0]
+SW[1] => code_lock_simple:poo_poo.code[1]
+SW[2] => code_lock_simple:poo_poo.code[2]
+SW[3] => code_lock_simple:poo_poo.code[3]
+LEDR[0] <= code_lock_simple:poo_poo.lock
+LEDR[1] <= <GND>
+LEDR[2] <= <GND>
+LEDR[3] <= <GND>
+LEDR[4] <= <GND>
+LEDR[5] <= <GND>
+LEDR[6] <= <GND>
+LEDR[7] <= <GND>
+LEDR[8] <= code_lock_simple:poo_poo.err_count[0]
+LEDR[9] <= code_lock_simple:poo_poo.err_count[1]
+GPIO[0] <= code_lock_simple:poo_poo.lock0
+
+
+|code_lock_tester|code_lock_simple:poo_poo
+clk => synch:synchronizer.clk
+clk => code_lock_simple_fsm:fsm.clk
+clk => wrong:Wrong.clk
+reset => code_lock_simple_fsm:fsm.reset
+reset => wrong:Wrong.reset
+code[0] => code_lock_simple_fsm:fsm.code[0]
+code[1] => code_lock_simple_fsm:fsm.code[1]
+code[2] => code_lock_simple_fsm:fsm.code[2]
+code[3] => code_lock_simple_fsm:fsm.code[3]
+enter => synch:synchronizer.async_sig
+err_count[0] <= wrong:Wrong.err_count[0]
+err_count[1] <= wrong:Wrong.err_count[1]
+lock <= code_lock_simple_fsm:fsm.lock
+lock0 <= code_lock_simple_fsm:fsm.lock0
+
+
+|code_lock_tester|code_lock_simple:poo_poo|synch:synchronizer
+async_sig => \sync1:resync[1].DATAIN
+clk => fall~reg0.CLK
+clk => rise~reg0.CLK
+clk => \sync1:resync[3].CLK
+clk => \sync1:resync[2].CLK
+clk => \sync1:resync[1].CLK
+rise <= rise~reg0.DB_MAX_OUTPUT_PORT_TYPE
+fall <= fall~reg0.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|code_lock_tester|code_lock_simple:poo_poo|code_lock_simple_fsm:fsm
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+enter => Selector2.IN5
+enter => Selector3.IN3
+enter => next_state.Ev_code2.DATAB
+enter => lock.DATAB
+enter => lock0.DATAB
+enter => Selector2.IN4
+enter => Selector4.IN3
+enter => Selector5.IN3
+enter => Selector0.IN0
+code[0] => Equal1.IN7
+code[0] => Equal3.IN7
+code[0] => Equal0.IN1
+code[0] => Equal2.IN0
+code[1] => Equal1.IN6
+code[1] => Equal3.IN6
+code[1] => Equal0.IN0
+code[1] => Equal2.IN3
+code[2] => Equal1.IN5
+code[2] => Equal3.IN5
+code[2] => Equal0.IN3
+code[2] => Equal2.IN2
+code[3] => Equal1.IN4
+code[3] => Equal3.IN4
+code[3] => Equal0.IN2
+code[3] => Equal2.IN1
+clk => present_state~1.DATAIN
+failed => Selector6.IN3
+failed => Selector2.IN2
+lock <= lock.DB_MAX_OUTPUT_PORT_TYPE
+lock0 <= lock0.DB_MAX_OUTPUT_PORT_TYPE
+err_event <= err_event$latch.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|code_lock_tester|code_lock_simple:poo_poo|Wrong:Wrong
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+reset => present_state.OUTPUTSELECT
+clk => present_state~1.DATAIN
+err_event => Selector0.IN2
+err_event => Selector1.IN3
+err_event => Selector2.IN3
+err_event => next_state.idle.DATAB
+err_event => Selector0.IN1
+err_event => Selector1.IN1
+err_count[0] <= err_count.DB_MAX_OUTPUT_PORT_TYPE
+err_count[1] <= err_count.DB_MAX_OUTPUT_PORT_TYPE
+failed <= failed.DB_MAX_OUTPUT_PORT_TYPE
+
+

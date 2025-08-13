@@ -1,0 +1,58 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+ENTITY exercise4 IS
+
+PORT 
+(
+		bin : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+		Sseg: OUT STD_LOGIC_VECTOR(6 DOWNTO 0)
+);
+END ENTITY
+
+ARCHITECTURE behavioral OF exercise4 IS
+
+BEGIN
+    process(BinaryInput)
+    begin
+        case BinaryInput is
+            when "0000" =>
+                Segments <= "1111110"; -- Hex: 0
+            when "0001" =>
+                Segments <= "0110000"; -- Hex: 1
+            when "0010" =>
+                Segments <= "1101101"; -- Hex: 2
+            when "0011" =>
+                Segments <= "1111001"; -- Hex: 3
+            when "0100" =>
+                Segments <= "0110011"; -- Hex: 4
+            when "0101" =>
+                Segments <= "1011011"; -- Hex: 5
+            when "0110" =>
+                Segments <= "1011111"; -- Hex: 6
+            when "0111" =>
+                Segments <= "1110000"; -- Hex: 7
+            when "1000" =>
+                Segments <= "1111111"; -- Hex: 8
+            when "1001" =>
+                Segments <= "1111011"; -- Hex: 9
+            when "1010" =>
+                Segments <= "1110111"; -- Hex: A
+            when "1011" =>
+                Segments <= "0011111"; -- Hex: B
+            when "1100" =>
+                Segments <= "1001110"; -- Hex: C
+            when "1101" =>
+                Segments <= "0111101"; -- Hex: D
+            when "1110" =>
+                Segments <= "1001111"; -- Hex: E
+            when "1111" =>
+                Segments <= "1000111"; -- Hex: F
+            when others =>
+                Segments <= "1111111"; -- All segments off for invalid input
+        end case;
+    end process;
+
+END behavioral;

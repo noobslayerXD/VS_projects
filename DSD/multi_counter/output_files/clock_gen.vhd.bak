@@ -1,0 +1,24 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.all;
+
+entity clock_gen is
+
+
+
+	port
+	(
+		
+	);
+end clock_gen;
+
+architecture clock_gen_impl of clock_gen is
+
+
+begin
+	
+
+
+end clock_gen_impl;
+

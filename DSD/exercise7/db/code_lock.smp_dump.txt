@@ -1,0 +1,17 @@
+
+State Machine - |code_lock_tester|code_lock_simple:poo_poo|Wrong:Wrong|present_state
+Name present_state.err_state2 present_state.err_state1 present_state.err_state0 present_state.idle 
+present_state.idle 0 0 0 0 
+present_state.err_state0 0 0 1 1 
+present_state.err_state1 0 1 0 1 
+present_state.err_state2 1 0 0 1 
+
+State Machine - |code_lock_tester|code_lock_simple:poo_poo|code_lock_simple_fsm:fsm|present_state
+Name present_state.wrong_code present_state.perm_lock present_state.Unlocked present_state.Ev_code2 present_state.get_code2 present_state.Ev_code1 present_state.idle 
+present_state.idle 0 0 0 0 0 0 0 
+present_state.Ev_code1 0 0 0 0 0 1 1 
+present_state.get_code2 0 0 0 0 1 0 1 
+present_state.Ev_code2 0 0 0 1 0 0 1 
+present_state.Unlocked 0 0 1 0 0 0 1 
+present_state.perm_lock 0 1 0 0 0 0 1 
+present_state.wrong_code 1 0 0 0 0 0 1 

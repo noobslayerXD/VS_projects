@@ -1,0 +1,113 @@
+------------------------------------------------------------
+Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Slow 1200mV 85C Model Setup 'vga:vga_comp|clk25'
+Slack : -3.586
+TNS   : -23.256
+
+Type  : Slow 1200mV 85C Model Setup 'vga:vga_comp|hSyncOut'
+Slack : -2.212
+TNS   : -18.992
+
+Type  : Slow 1200mV 85C Model Setup 'clock_50'
+Slack : -0.535
+TNS   : -0.535
+
+Type  : Slow 1200mV 85C Model Hold 'vga:vga_comp|hSyncOut'
+Slack : 0.341
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'vga:vga_comp|clk25'
+Slack : 0.454
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'clock_50'
+Slack : 0.502
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'clock_50'
+Slack : -3.000
+TNS   : -4.403
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'vga:vga_comp|clk25'
+Slack : -1.403
+TNS   : -15.433
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'vga:vga_comp|hSyncOut'
+Slack : -1.403
+TNS   : -15.433
+
+Type  : Slow 1200mV 0C Model Setup 'vga:vga_comp|clk25'
+Slack : -3.279
+TNS   : -20.489
+
+Type  : Slow 1200mV 0C Model Setup 'vga:vga_comp|hSyncOut'
+Slack : -1.926
+TNS   : -16.616
+
+Type  : Slow 1200mV 0C Model Setup 'clock_50'
+Slack : -0.365
+TNS   : -0.365
+
+Type  : Slow 1200mV 0C Model Hold 'vga:vga_comp|hSyncOut'
+Slack : 0.307
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'clock_50'
+Slack : 0.361
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'vga:vga_comp|clk25'
+Slack : 0.417
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'clock_50'
+Slack : -3.000
+TNS   : -4.403
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'vga:vga_comp|clk25'
+Slack : -1.403
+TNS   : -15.433
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'vga:vga_comp|hSyncOut'
+Slack : -1.403
+TNS   : -15.433
+
+Type  : Fast 1200mV 0C Model Setup 'vga:vga_comp|clk25'
+Slack : -1.015
+TNS   : -3.275
+
+Type  : Fast 1200mV 0C Model Setup 'vga:vga_comp|hSyncOut'
+Slack : -0.338
+TNS   : -1.198
+
+Type  : Fast 1200mV 0C Model Setup 'clock_50'
+Slack : -0.149
+TNS   : -0.149
+
+Type  : Fast 1200mV 0C Model Hold 'vga:vga_comp|hSyncOut'
+Slack : 0.150
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'vga:vga_comp|clk25'
+Slack : 0.185
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'clock_50'
+Slack : 0.379
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'clock_50'
+Slack : -3.000
+TNS   : -4.223
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'vga:vga_comp|clk25'
+Slack : -1.000
+TNS   : -11.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'vga:vga_comp|hSyncOut'
+Slack : -1.000
+TNS   : -11.000
+
+------------------------------------------------------------

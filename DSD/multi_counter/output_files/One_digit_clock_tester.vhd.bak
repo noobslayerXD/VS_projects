@@ -1,0 +1,39 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.all;
+
+entity multicounter_tester is
+	port 
+		(
+			--inputs
+			KEY: in STD_logic_vector(1 downto 0);
+			SW: in STD_logic_vector(1 downto 0);
+			
+			
+			--outputs
+				HEX0: out STD_logic_vector(6 downto 0);
+				LEDR: out std_logic
+				);
+end multicounter_tester;
+
+architecture implementation of multicounter_tester is
+
+signal multi:std_logic_vector(3 downto 0);
+
+begin
+
+bin2hex : entity work.bin2hex port map (
+	bin => multi(3 downto 0),
+	seg => HEX0(6 downto 0)
+	);
+multi_counter: entity work.multi_counter port map (
+	clken => '1',
+	clk => KEY(0),
+	reset => KEY(1),
+	mode => SW(1 downto 0),
+	count => multi(3 downto 0),
+	cout => LEDR
+	);
+end implementation;
+	

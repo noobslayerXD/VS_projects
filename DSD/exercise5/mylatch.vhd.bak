@@ -1,0 +1,28 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+
+entity mylatch is
+
+	port
+	(
+		-- Input ports
+		set	: in  std_logic;
+		input	: in  std_logic_vector(7 downto 0);
+
+		-- Output ports
+		set_val	: out std_logic_vector(7 downto 0)
+	);
+end mylatch;
+
+
+architecture latch_impl of mylatch is
+begin
+    process (input, set)
+    begin
+        if set = '1' then
+            -- When set is asserted, the latch stores the input values
+            set_val <= input;
+			end if;
+			end process;
+end latch_impl;

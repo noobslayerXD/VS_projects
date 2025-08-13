@@ -1,0 +1,60 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.all;
+
+entity alarm_watch_tester is 
+port
+(
+--inputs
+KEY: in std_logic_vector(1 downto 0);
+SW : in std_logic_vector(15 downto 0);
+CLOCK_50: in std_logic;
+--outputs
+	LEDR: out STD_logic;
+	HEX0: out STD_logic_vector(6 downto 0);
+	HEX1: out STD_logic_vector(6 downto 0);
+	HEX2: out STD_logic_vector(6 downto 0);
+	HEX3: out STD_logic_vector(6 downto 0);
+	HEX4: out STD_logic_vector(6 downto 0);
+	HEX5: out STD_logic_vector(6 downto 0)
+	);
+end alarm_watch_tester;
+
+architecture Behavioral of alarm_watch_tester is
+
+	--signal multi: std_logic_vector(3 downto 0);
+	
+
+
+begin 
+	watch: entity work.watch port map(
+		clk => CLOCK_50,
+		speed => KEY(0),
+		reset => KEY(1),
+		sec_1 => HEX0(6 downto 0),
+		sec_10 => HEX1(6 downto 0),
+		min_1 => HEX2(6 downto 0),
+		min_10 => HEX3(6 downto 0),
+		hrs_1 => HEX4(6 downto 0),
+		hrs_10 => HEX5(6 downto 0),
+		tm => open
+		);
+--		
+--	bin2hex1 : entity work.bin2hex port map (
+--	bin => multi(3 downto 0),
+--	seg => min1(6 downto 0)
+--	);
+--	bin2hex2 : entity work.bin2hex port map (
+--	bin => multi(3 downto 0),
+--	seg => min10(6 downto 0)
+--	);
+--	bin2hex3 : entity work.bin2hex port map (
+--	bin => multi(3 downto 0),
+--	seg => hrs1(6 downto 0)
+--	);
+--	bin2hex4 : entity work.bin2hex port map (
+--	bin => multi(3 downto 0),
+--	seg => hrs10(6 downto 0)
+--	);
+end Behavioral;

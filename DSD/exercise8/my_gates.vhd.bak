@@ -1,0 +1,27 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+
+entity my_gates is
+  Port (
+    a, b : in  STD_LOGIC;
+    xor_result : out STD_LOGIC;
+    and_or_result : out STD_LOGIC
+  );
+end my_gates;
+
+architecture Behavioral of my_gates is
+  signal and_result : STD_LOGIC;
+begin
+  -- XOR function
+  xor_result <= a XOR b;
+
+  -- AND-OR procedure
+  my_and_or: process(a, b)
+  begin
+    and_result <= a AND b;
+    and_or_result <= and_result OR (NOT a AND NOT b);
+  end process my_and_or;
+
+end Behavioral;

@@ -1,0 +1,217 @@
+|four_bit_adder
+Cin => full_adder:fa1.Cin
+A[0] => full_adder:fa1.A
+A[1] => full_adder:fa2.A
+A[2] => full_adder:fa3.A
+A[3] => full_adder:fa4.A
+B[0] => full_adder:fa1.B
+B[1] => full_adder:fa2.B
+B[2] => full_adder:fa3.B
+B[3] => full_adder:fa4.B
+Sum[0] <= full_adder:fa1.Sum
+Sum[1] <= full_adder:fa2.Sum
+Sum[2] <= full_adder:fa3.Sum
+Sum[3] <= full_adder:fa4.Sum
+Cout <= full_adder:fa4.Cout
+
+
+|four_bit_adder|full_adder:fa1
+A => half_adder_structural:h1.A
+B => half_adder_structural:h1.B
+Cin => half_adder_structural:h2.B
+Sum <= half_adder_structural:h2.Sum
+Cout <= Cout.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h1
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h1|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h1|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h2
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h2|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa1|half_adder_structural:h2|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa2
+A => half_adder_structural:h1.A
+B => half_adder_structural:h1.B
+Cin => half_adder_structural:h2.B
+Sum <= half_adder_structural:h2.Sum
+Cout <= Cout.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h1
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h1|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h1|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h2
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h2|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa2|half_adder_structural:h2|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa3
+A => half_adder_structural:h1.A
+B => half_adder_structural:h1.B
+Cin => half_adder_structural:h2.B
+Sum <= half_adder_structural:h2.Sum
+Cout <= Cout.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h1
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h1|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h1|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h2
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h2|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa3|half_adder_structural:h2|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa4
+A => half_adder_structural:h1.A
+B => half_adder_structural:h1.B
+Cin => half_adder_structural:h2.B
+Sum <= half_adder_structural:h2.Sum
+Cout <= Cout.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h1
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h1|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h1|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h2
+A => my_and:u1.a
+A => my_xor:u2.a
+B => my_and:u1.b
+B => my_xor:u2.b
+Sum <= my_xor:u2.f
+Cout <= my_and:u1.f
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h2|my_and:u1
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+
+|four_bit_adder|full_adder:fa4|half_adder_structural:h2|my_xor:u2
+a => f.IN0
+b => f.IN1
+f <= f.DB_MAX_OUTPUT_PORT_TYPE
+
+

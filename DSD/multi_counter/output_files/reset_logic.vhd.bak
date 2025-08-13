@@ -1,0 +1,31 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use work.all;
+
+entity reset_logic is
+port
+	(
+		--inputs
+		clk: in std_logic;
+		reset_in: in std_logic;
+		
+		--outputs
+		reset_out: out std_logic;
+		
+	);
+end reset_logic;
+
+architecture reset_logic_impl of reset_logic is
+  
+
+begin
+	
+	
+
+    clk_out <= pulse;
+
+end reset_logic_impl;
+

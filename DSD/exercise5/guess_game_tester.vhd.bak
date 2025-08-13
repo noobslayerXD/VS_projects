@@ -1,0 +1,42 @@
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
+use work.all;
+
+entity guess_game_tester is
+	
+	port
+	(
+		-- Input ports
+		SW	: in  std_logic_vector(7 downto 0);
+		KEY: in	std_logic_vector(3 downto 0);
+		
+		-- Output ports
+		
+		HEX1	: out std_logic_vector(6 downto 0);
+		HEX2	: out std_logic_vector(6 downto 0)
+	);
+end guess_game_tester;
+
+
+architecture guess_game_tester_impl of guess_game_tester is
+
+	-- Declarations (optional)
+
+begin
+
+	
+	one_player: entity work.guess_game
+	
+	port map 
+	(
+		input => SW(7 downto 0),
+		show	=> KEY(0),
+		set	=> KEY(1),
+		try	=> KEY(2),
+		hex1 	=> HEX1,
+		hex10 => HEX2
+	);
+
+
+end guess_game_tester_impl;

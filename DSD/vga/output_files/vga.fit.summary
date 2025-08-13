@@ -1,0 +1,18 @@
+Fitter Status : Successful - Wed Dec  6 09:48:41 2023
+Quartus Prime Version : 21.1.1 Build 850 06/23/2022 SJ Lite Edition
+Revision Name : vga
+Top-level Entity Name : vga_test
+Family : MAX 10
+Device : 10M50DAF484C7G
+Timing Models : Final
+Total logic elements : 52 / 49,760 ( < 1 % )
+    Total combinational functions : 50 / 49,760 ( < 1 % )
+    Dedicated logic registers : 23 / 49,760 ( < 1 % )
+Total registers : 23
+Total pins : 16 / 360 ( 4 % )
+Total virtual pins : 0
+Total memory bits : 0 / 1,677,312 ( 0 % )
+Embedded Multiplier 9-bit elements : 0 / 288 ( 0 % )
+Total PLLs : 0 / 4 ( 0 % )
+UFM blocks : 0 / 1 ( 0 % )
+ADC blocks : 0 / 2 ( 0 % )

@@ -1,0 +1,286 @@
+$comment
+	File created using the following command:
+		vcd file Exercise2.msim.vcd -direction
+$end
+$date
+	Wed Sep 13 11:15:28 2023
+$end
+$version
+	ModelSim Version 2020.1
+$end
+$timescale
+	1ps
+$end
+
+$scope module four_bit_adder_vhd_vec_tst $end
+$var wire 1 ! A [3] $end
+$var wire 1 " A [2] $end
+$var wire 1 # A [1] $end
+$var wire 1 $ A [0] $end
+$var wire 1 % B [3] $end
+$var wire 1 & B [2] $end
+$var wire 1 ' B [1] $end
+$var wire 1 ( B [0] $end
+$var wire 1 ) Cin $end
+$var wire 1 * Cout $end
+$var wire 1 + Sum [3] $end
+$var wire 1 , Sum [2] $end
+$var wire 1 - Sum [1] $end
+$var wire 1 . Sum [0] $end
+
+$scope module i1 $end
+$var wire 1 / gnd $end
+$var wire 1 0 vcc $end
+$var wire 1 1 unknown $end
+$var wire 1 2 devoe $end
+$var wire 1 3 devclrn $end
+$var wire 1 4 devpor $end
+$var wire 1 5 ww_devoe $end
+$var wire 1 6 ww_devclrn $end
+$var wire 1 7 ww_devpor $end
+$var wire 1 8 ww_Cin $end
+$var wire 1 9 ww_A [3] $end
+$var wire 1 : ww_A [2] $end
+$var wire 1 ; ww_A [1] $end
+$var wire 1 < ww_A [0] $end
+$var wire 1 = ww_B [3] $end
+$var wire 1 > ww_B [2] $end
+$var wire 1 ? ww_B [1] $end
+$var wire 1 @ ww_B [0] $end
+$var wire 1 A ww_Sum [3] $end
+$var wire 1 B ww_Sum [2] $end
+$var wire 1 C ww_Sum [1] $end
+$var wire 1 D ww_Sum [0] $end
+$var wire 1 E ww_Cout $end
+$var wire 1 F \~QUARTUS_CREATED_ADC1~_CHSEL_bus\ [4] $end
+$var wire 1 G \~QUARTUS_CREATED_ADC1~_CHSEL_bus\ [3] $end
+$var wire 1 H \~QUARTUS_CREATED_ADC1~_CHSEL_bus\ [2] $end
+$var wire 1 I \~QUARTUS_CREATED_ADC1~_CHSEL_bus\ [1] $end
+$var wire 1 J \~QUARTUS_CREATED_ADC1~_CHSEL_bus\ [0] $end
+$var wire 1 K \~QUARTUS_CREATED_ADC2~_CHSEL_bus\ [4] $end
+$var wire 1 L \~QUARTUS_CREATED_ADC2~_CHSEL_bus\ [3] $end
+$var wire 1 M \~QUARTUS_CREATED_ADC2~_CHSEL_bus\ [2] $end
+$var wire 1 N \~QUARTUS_CREATED_ADC2~_CHSEL_bus\ [1] $end
+$var wire 1 O \~QUARTUS_CREATED_ADC2~_CHSEL_bus\ [0] $end
+$var wire 1 P \fa1|h2|u2|f~0_combout\ $end
+$var wire 1 Q \fa1|Cout~0_combout\ $end
+$var wire 1 R \fa2|h2|u2|f~combout\ $end
+$var wire 1 S \fa2|Cout~0_combout\ $end
+$var wire 1 T \fa3|h2|u2|f~combout\ $end
+$var wire 1 U \fa3|Cout~0_combout\ $end
+$var wire 1 V \fa4|h2|u2|f~combout\ $end
+$var wire 1 W \fa4|Cout~0_combout\ $end
+$var wire 1 X \Cin~input_o\ $end
+$var wire 1 Y \A[0]~input_o\ $end
+$var wire 1 Z \B[0]~input_o\ $end
+$var wire 1 [ \B[1]~input_o\ $end
+$var wire 1 \ \A[1]~input_o\ $end
+$var wire 1 ] \A[2]~input_o\ $end
+$var wire 1 ^ \B[2]~input_o\ $end
+$var wire 1 _ \A[3]~input_o\ $end
+$var wire 1 ` \B[3]~input_o\ $end
+$var wire 1 a \~QUARTUS_CREATED_GND~I_combout\ $end
+$var wire 1 b \~QUARTUS_CREATED_UNVM~~busy\ $end
+$var wire 1 c \~ALTERA_TMS~~ibuf_o\ $end
+$var wire 1 d \~ALTERA_TMS~~padout\ $end
+$var wire 1 e \~ALTERA_TCK~~ibuf_o\ $end
+$var wire 1 f \~ALTERA_TCK~~padout\ $end
+$var wire 1 g \~ALTERA_TDI~~ibuf_o\ $end
+$var wire 1 h \~ALTERA_TDI~~padout\ $end
+$var wire 1 i \~ALTERA_TDO~~padout\ $end
+$var wire 1 j \~ALTERA_CONFIG_SEL~~ibuf_o\ $end
+$var wire 1 k \~ALTERA_CONFIG_SEL~~padout\ $end
+$var wire 1 l \~ALTERA_nCONFIG~~ibuf_o\ $end
+$var wire 1 m \~ALTERA_nCONFIG~~padout\ $end
+$var wire 1 n \~ALTERA_nSTATUS~~ibuf_o\ $end
+$var wire 1 o \~ALTERA_nSTATUS~~padout\ $end
+$var wire 1 p \~ALTERA_CONF_DONE~~ibuf_o\ $end
+$var wire 1 q \~ALTERA_CONF_DONE~~padout\ $end
+$var wire 1 r \~QUARTUS_CREATED_ADC1~~eoc\ $end
+$var wire 1 s \~QUARTUS_CREATED_ADC2~~eoc\ $end
+$var wire 1 t \~ALTERA_TDO~~obuf_o\ $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+$dumpvars
+0)
+0*
+0/
+10
+x1
+12
+13
+14
+15
+16
+17
+08
+0E
+0P
+0Q
+0R
+0S
+0T
+0U
+0V
+0W
+0X
+0Y
+0Z
+0[
+0\
+0]
+0^
+0_
+0`
+0a
+zb
+xc
+xd
+xe
+xf
+xg
+xh
+xi
+xj
+xk
+xl
+xm
+xn
+xo
+xp
+xq
+zr
+zs
+xt
+0!
+0"
+0#
+0$
+0%
+0&
+0'
+0(
+09
+0:
+0;
+0<
+0=
+0>
+0?
+0@
+0A
+0B
+0C
+0D
+0F
+0G
+0H
+0I
+0J
+0K
+0L
+0M
+0N
+0O
+0+
+0,
+0-
+0.
+$end
+#120000
+1!
+1"
+1#
+1$
+1%
+1&
+1'
+1(
+1<
+1;
+1:
+19
+1@
+1?
+1>
+1=
+1`
+1^
+1[
+1Z
+1_
+1]
+1\
+1Y
+1Q
+1S
+1U
+1W
+1E
+1*
+1V
+1T
+1R
+1C
+1B
+1A
+1-
+1,
+1+
+#160000
+1)
+18
+1X
+1P
+1D
+1.
+#180000
+0!
+0"
+0#
+0$
+0%
+0&
+0'
+0(
+0<
+0;
+0:
+09
+0@
+0?
+0>
+0=
+0`
+0^
+0[
+0Z
+0_
+0]
+0\
+0Y
+0Q
+0S
+0U
+0W
+0E
+0*
+0V
+0T
+0R
+0C
+0B
+0A
+0-
+0,
+0+
+#190000
+0)
+08
+0X
+0P
+0D
+0.
+#1000000
