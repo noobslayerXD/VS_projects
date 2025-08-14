@@ -24,7 +24,7 @@ print("Den statistiske model vi bruger er den fra side 62 i statistik noten, da 
 mu_0 = 20
 mu_hat = Sample_mean_y
 s = variance_y ** 0.5
-
+1
 t = (mu_hat-mu_0)/(s*(len(y))**0.5)
 print("t:",t)
 # approximate p-value
