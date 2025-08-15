@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
 
 mean = 7
 variance = 2

@@ -1,8 +1,6 @@
 import numpy as np
 import scipy.stats as stats
-import seaborn as sns
 import matplotlib.pyplot as plt
-import random
 
 ### Problem 1 : sandsynlighedsteori
 # En software udvikler  tester et spamfilter til filtrering af uønskede mails

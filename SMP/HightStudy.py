@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.stats as stats
 
 m = np.array([1.76, 1.79, 1.60, 1.90, 1.78, 1.74, 1.75, 1.80, 1.82, 1.77, 1.79, 1.78, 1.38, 1.87, 1.59])

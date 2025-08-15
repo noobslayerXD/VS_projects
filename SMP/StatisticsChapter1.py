@@ -1,6 +1,4 @@
-import numpy as np
 from scipy import stats
-import matplotlib.pyplot as plt
 
 ### Problem 1
 Sample_mean = 260
