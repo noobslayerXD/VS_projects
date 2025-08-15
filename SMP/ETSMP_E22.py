@@ -1,8 +1,8 @@
 import numpy as np
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
+# import seaborn as sns
+# import pandas as pd
 
 
 ### Opgave 4
