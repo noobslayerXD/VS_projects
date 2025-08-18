@@ -4,13 +4,61 @@ import matplotlib.pyplot as plt
 # import seaborn as sns
 # import pandas as pd
 
-### Opgave 1
-
-
 ### Opgave 2
+mu = 10
+sigma = 2 ** 0.5
+# a: plot normalfordeling
+x = np.linspace(mu - 4*sigma, mu + 4*sigma, 100)
+y = stats.norm.pdf(x, mu, sigma)
+plt.plot(x, y)
+plt.title("Normalfordeling")
+plt.xlabel("x")
+plt.xlim([6, 14])
+plt.ylabel("Probability Density")
+plt.grid()
+plt.show()
 
+# b: P(x<5)
+y2 = stats.norm.cdf(x, mu, sigma)
+P_x_less_5 = y2[5]
+print("P(x<5):", P_x_less_5)
+
+# c: Høj PDF
+mu2= 5
+varians = 0.1
+std_div = varians ** 0.5
+
+
+x = np.linspace(mu2 - 4*std_div, mu2 + 4*std_div, 100)
+y = stats.norm.pdf(x, mu2, std_div)
+plt.plot(x, y)
+plt.title("Normalfordeling")
+plt.xlabel("x")
+plt.ylabel("Probability Density")
+plt.grid()
+plt.show()
 
 ### Opgave 3
+
+# a: 
+N = 11
+n = np.arange(0, N)
+MC = 3
+
+for i in range(MC):
+    y = np.random.randint(0,4+1,N)
+    print(y)
+    z = 6 * np.random.rand(N) - 3
+    x = 4 * y - z **2
+    plt.plot(n, x, label=f'x_{i+1}')
+    
+plt.grid(True)
+plt.title('3 realisationer af X')
+plt.xlabel('n')
+plt.ylabel('x')
+plt.legend()
+plt.show()
+
 
 
 ### Opgave 4

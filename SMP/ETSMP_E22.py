@@ -3,9 +3,87 @@ import scipy.stats as stats
 import matplotlib.pyplot as plt
 # import seaborn as sns
 # import pandas as pd
+from scipy.integrate import quad
+
+# region Opgave 1
 
 
-### Opgave 4
+# endregion
+
+
+# region Opgave 2
+def f_x(x):
+    if 0 <= x < 2:
+        return 1/4
+    elif 2 <= x <= 3:
+        return 1/2
+    else:
+        return 0
+
+x_vals2 = np.arange(-1, 5, 0.01)
+y_vals2 = [f_x(x) for x in x_vals2]
+# a: Bestem og skitser fordelingsfunktionen CDF F_X(x) for x i intervallet -1 til 4
+
+# Hvis den er continuert
+def F_x(x):
+    if x < 0:
+        return 0
+    elif 0 <= x <2:
+        return x/4
+    elif 2 <= x <= 3: 
+        return (x/2)-1/2
+    elif x >= 3:
+        return 1
+
+
+x_vals = np.arange(-1, 5, 0.01)
+y_vals = [F_x(x) for x in x_vals]
+
+plt.plot(x_vals, y_vals)
+plt.xlabel('x')
+plt.ylabel('$F_x(x)$')
+plt.title('Plot af $F_x(x)$')
+plt.show()
+
+# b: 
+result, error = quad(lambda x: f_x(x)*x, -np.inf, np.inf)
+print("Integral of f_x(x)*x from -inf to inf (forventningsværdi):", result)
+
+# c:
+result, error = quad(lambda x: f_x(x)*x**2, -np.inf, np.inf)
+print("Integral of f_x(x)*x from -inf to inf (forventningsværdi):", result)
+
+# endregion
+
+
+# region Opgave 3
+n_vals = np.arange(0, 10)           # n = 0 to 9
+x_1 = (1/2)*n_vals + 4         
+x_2 = -(1/2)*n_vals + 4
+x_3 = 2
+
+# a:
+plt.plot(n_vals, x_1) 
+plt.plot(n_vals, x_2) 
+plt.axhline(y=x_3)
+plt.xlabel('n')
+plt.grid(True)
+plt.show()
+
+# b: beregn ensemble mean
+# x1 og x2 går ud med hinaden 
+# x_3 mean er konstant
+X_mean = (2 + 4 + 4)/3
+print("ensemble mean af X:",X_mean)
+
+# c: processen er ikke WSS og derfor også ikke ergodisk
+# Dette er fordi variansen afhænger af samplen
+
+
+# endregion
+
+
+# region Opgave 4
 
 x = np.array([1,2,3,4,5,6,7,8,9,10])
 y = np.array([18.65,23.02,20.72,19.93,20.71,19.79,19.87,21.48,21.40,21.41])
@@ -58,3 +136,5 @@ plt.show()
 print(res.rvalue)
 #eller
 print(np.corrcoef(X,Y))
+
+# endregion

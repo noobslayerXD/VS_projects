@@ -1,5 +1,59 @@
 import numpy as np
 import scipy.stats as stats
+import matplotlib.pyplot as plt
+
+
+### Opgave 2
+n = 10
+p = 0.6
+# plot binomialfordeling
+x = np.arange(0, n+1)
+X = stats.binom.pmf(x, n, p)
+plt.bar(x, X)
+plt.title("Binomialfordeling")
+plt.xlabel("Antal succeser")
+plt.ylabel("Sandsynlighed")
+plt.show()
+
+# plot cdf for binomialfordeling
+x = np.arange(0, n+1)
+X = stats.binom.cdf(x, n, p)
+plt.step(x, X,where="post")
+plt.title("Binomialfordeling")
+plt.xlabel("Antal succeser")
+plt.ylabel("Sandsynlighed")
+plt.show()
+
+# find sandsynligheden for at x er større end 7
+P_x_greatereq_7 = X[6]
+print("Sandsynligheden for at x er større end eller lig med 7 er:",P_x_greatereq_7)
+
+# d
+n2 = 5
+p2 = 0.1
+Y = stats.binom.pmf(x,n2,p2)
+Z = 3*X+2*Y
+
+### Opgave 3
+N = 11  # antal tidspunkter (n=0,...,10)
+MC = 3  # antal realiseringer
+n = np.arange(0, N+1)
+
+for i in range(MC):
+    X = np.zeros(N+1)
+    X[0] = 100
+    Y = np.random.binomial(1, 0.5, N)
+    for k in range(1, N+1):
+        X[k] = Y[k-1]*1.8*X[k-1] + (1-Y[k-1])*0.5*X[k-1]
+    plt.plot(n, X, label=f'Realisering {i+1}')
+
+plt.yscale('log')
+plt.xlabel('n')
+plt.ylabel('X[n]')
+plt.title('3 realiseringer af X[n] (log y-akse)')
+plt.legend()
+plt.grid(True, which="both", ls="--")
+plt.show()
 
 
 
