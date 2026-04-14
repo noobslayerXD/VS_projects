@@ -66,9 +66,10 @@ for csv_path in csv_files:
             # avoid log(0) by adding a tiny epsilon where values are zero
             eps = 1e-12
             y_safe = y_numeric.fillna(0)
+            # convert inf to NaN explicitly (option deprecated) and compute dB
+            y_safe = y_safe.replace([np.inf, -np.inf], np.nan)
             # compute 20*log10(abs(y)) safely
-            with pd.option_context('mode.use_inf_as_na', True):
-                y_db = 20 * np.log10(y_safe.abs() + eps)
+            y_db = 20 * np.log10(y_safe.abs() + eps)
             y_to_plot = y_db
             if first_csv:
                 converted_db_first = True
@@ -124,4 +125,6 @@ else:
 out_path = DIR / "combined_plot.png"
 plt.savefig(out_path, dpi=150)
 print(f"Saved plot to: {out_path}")
-plt.show()
+# Show the plot interactively only if the user passed --show
+if "--show" in sys.argv:
+    plt.show()
