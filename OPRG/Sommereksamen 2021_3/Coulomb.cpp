@@ -1,4 +1,4 @@
-#include "/Users/Jacob/source/repos\Couloumb.h"
+#include "Couloumb.hpp"
 
 
 double beregnKraft(double q1,double q2,double afstand)

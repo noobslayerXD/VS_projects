@@ -1,4 +1,4 @@
-#include "functions1.h"
+#include "functions1.hpp"
 #include <iostream>
 #include <cmath>
 using namespace std;

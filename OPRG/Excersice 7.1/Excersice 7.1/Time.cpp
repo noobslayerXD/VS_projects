@@ -1,5 +1,5 @@
-#include "Time.h"
-#include "Time.h"
+#include "Time.hpp"
+#include "Time.hpp"
 #include <iostream>
 using namespace std;
 

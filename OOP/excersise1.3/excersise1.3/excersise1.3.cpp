@@ -1,5 +1,5 @@
-#include <"functions1.h (1)">
-#include <"excersise1.3/functions1.h">
+#include <"functions1.hpp">
+#include <"excersise1.3/functions1.hpp">
 #include <iostream>
 #include <cmath>
 using namespace std;
