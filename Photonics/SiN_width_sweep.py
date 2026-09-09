@@ -7,7 +7,7 @@ along x and no sign change along y in its dominant transverse field Ex.
 
 import csv
 import traceback
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import emodeconnection as emc
@@ -279,7 +279,7 @@ def run_width_sweep():
     n_sio2 = n_sio2_malitson(wavelength_um)
 
     script_folder = Path(__file__).resolve().parent
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d_%H-%M-%S")
     output_folder = script_folder / f"SiN_{wavelength_nm:.0f}nm_width_sweep_{timestamp}"
     profile_folder = output_folder / "mode_profiles"
     project_folder = output_folder / "emode_projects"
@@ -404,7 +404,7 @@ def run_width_sweep():
                 row = {key: value for key, value in mode.items() if key != "label_field"}
                 rows.append(row)
 
-        except Exception:
+        except (OSError, RuntimeError, ValueError, TypeError, KeyError, IndexError):
             message = f"FAILED at width {width_nm} nm\n{traceback.format_exc()}\n"
             print(message)
             with open(error_log, "a", encoding="utf-8") as file:
@@ -413,8 +413,8 @@ def run_width_sweep():
             if em is not None:
                 try:
                     em.close(save=False, save_all_fields=False)
-                except Exception:
-                    pass
+                except (OSError, RuntimeError) as exc:
+                    print(f"Warning: failed to close EMode connection: {exc}")
 
     csv_fields = [
         "wavelength_nm", "width_nm", "emode_index", "polarization",

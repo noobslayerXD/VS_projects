@@ -189,12 +189,12 @@ def solve_at_wavelength(wavelength_nm):
 
     try:
         em.close(save=True, save_all_fields=False)
-    except Exception as error:
+    except (OSError, RuntimeError) as error:
         print(f"EMode close warning: {error}")
         try:
             em.close()
-        except Exception:
-            pass
+        except (OSError, RuntimeError) as error:
+            print(f"Fallback EMode close warning: {error}")
 
     # Give Windows time to release the EMode port file before the next run.
     time.sleep(1.5)
