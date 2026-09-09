@@ -1,5 +1,6 @@
 # Import csv file and integrate noise
 import csv
+
 import numpy as np
 
 # import csv and define

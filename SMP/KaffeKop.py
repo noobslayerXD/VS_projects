@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import norm
 
-
 # create 100 normal distributed random numbers
 mean = 250
 std_dev = 2.5

@@ -1,8 +1,8 @@
 # Import CSV Files and Plot Data
 # First row is name of data. first column is time, and second column is voltage data.
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 # Read the CSV file (assuming it's in the same directory)
 df = pd.read_csv('KomparatorTest.CSV', header=None)

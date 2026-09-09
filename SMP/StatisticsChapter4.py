@@ -1,4 +1,4 @@
-import scipy.stats as stats
+from scipy import stats
 
 ### Problem 1
 

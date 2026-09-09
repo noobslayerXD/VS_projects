@@ -1,6 +1,4 @@
-import numpy as np
-import scipy.stats as stats
-import matplotlib.pyplot as plt
+from scipy import stats
 
 ### Opgave 4
 n  = 1200

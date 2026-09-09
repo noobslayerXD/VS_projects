@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 p1 = np.array([1,0,0,0,1,0,0,1,1,0,1,0,1,1,1])
 p2 = np.array([1,0,0,0,1,1,1,1,0,1,0,1,1,0,0])

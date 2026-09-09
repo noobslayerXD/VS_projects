@@ -1,9 +1,8 @@
 #import scipy
-import scipy as sp
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy as sp
 import seaborn as sns
-
 
 my = 100
 sigma = 5

@@ -1,5 +1,4 @@
-import scipy.stats as stats
-
+from scipy import stats
 
 ### Opgave 4: Statistik
 n = 10000

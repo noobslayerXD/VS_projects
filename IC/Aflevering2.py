@@ -1,13 +1,12 @@
-from pathlib import Path
 import sys
-import pandas as pd
-import numpy as np
+from pathlib import Path
 
 # Aflevering2.py
 # Finds the first two CSV files in the script directory, loads them with pandas and
 # plots the first two columns (or index vs single column) from each on the same plot.
-
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 DIR = Path(__file__).parent
 csv_files = sorted(DIR.glob("*.csv"))
@@ -35,24 +34,20 @@ for csv_path in csv_files:
         y = df.iloc[:, 1]
         if first_csv:
             # Use the first CSV's column headers if available
-            try:
-                cols = list(df.columns)
-                if len(cols) >= 2:
-                    xlabel = cols[0]
-                    ylabel = cols[1]
-            except Exception:
-                pass
+            cols = list(df.columns)
+            if len(cols) >= 2:
+                xlabel = cols[0]
+                ylabel = cols[1]
     elif df.shape[1] == 1:
         x = df.index
         y = df.iloc[:, 0]
         if first_csv:
-            try:
-                cols = list(df.columns)
-                if len(cols) >= 1:
-                    xlabel = "index"
-                    ylabel = cols[0]
-            except Exception:
-                pass
+            
+            cols = list(df.columns)
+            if len(cols) >= 1:
+                xlabel = "index"
+                ylabel = cols[0]
+            
     else:
         print(f"Skipping {csv_path.name}: no usable columns")
         continue
@@ -75,7 +70,7 @@ for csv_path in csv_files:
                 converted_db_first = True
         else:
             print(f"Note: y values in {csv_path.name} are non-numeric; plotting raw values.")
-    except Exception:
+    except (TypeError, ValueError):
         print(f"Warning: failed to convert y values in {csv_path.name} to numeric; plotting raw values.")
 
     plt.plot(x, y_to_plot, label=csv_path.name)
@@ -85,7 +80,7 @@ for csv_path in csv_files:
         numeric_x = pd.to_numeric(x, errors="coerce").dropna()
         if not numeric_x.empty:
             all_x_values.append(numeric_x)
-    except Exception:
+    except (TypeError, ValueError):
         # If conversion fails for some reason, ignore this file for log-check
         pass
 
@@ -113,7 +108,7 @@ if all_x_values:
         # Use log scale only if all numeric x-values are strictly positive
         if (concatenated > 0).all():
             use_log_x = True
-    except Exception:
+    except (TypeError, ValueError):
         use_log_x = False
 
 if use_log_x:

@@ -1,7 +1,4 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
-from pysmithchart import S_PARAMETER
 
 S = [[-1.626-1.626j, 0], 
      [2+3.464j, 0.4-0.693j]]

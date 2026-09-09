@@ -1,6 +1,6 @@
-import numpy as np
-import scipy.stats as stats
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
 
 ### Problem 1 : sandsynlighedsteori
 # En software udvikler  tester et spamfilter til filtrering af uønskede mails

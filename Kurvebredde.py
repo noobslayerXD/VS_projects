@@ -1,12 +1,10 @@
-import osmnx as ox
 import geopandas as gpd
-import numpy as np
-import requests
-import pandas as pd
-from shapely.geometry import Point, LineString
-from shapely.ops import nearest_points
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
+import numpy as np
+import osmnx as ox
+import pandas as pd
+import requests
+from shapely.geometry import Point
 
 # ============================================================
 # KONFIGURATION
@@ -87,7 +85,7 @@ def fetch_btr_segments(bbox) -> gpd.GeoDataFrame | None:
             return None
 
         return gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
-    except Exception as e:
+    except (requests.RequestException, ValueError) as e:
         print(f"⚠ BTR-forespørgsel fejlede ({e}) — falder tilbage til D=0.")
         return None
 

@@ -1,7 +1,7 @@
-import numpy as np
-import scipy.stats as stats
-from scipy.special import comb
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+from scipy.special import comb
 
 # region Opgave 1
 

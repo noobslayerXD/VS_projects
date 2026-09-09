@@ -1,6 +1,6 @@
-import numpy as np
-import scipy.stats as stats
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
 
 ## Opgave 3
 
@@ -90,7 +90,7 @@ var_f_arr = []
 var_Ke_arr = []
 
 for i in range(n):
-     covarians_arr.append((f[i]*K_e[i]-np.mean(f)*np.mean(K_e)))
+     covarians_arr.append(f[i]*K_e[i]-np.mean(f)*np.mean(K_e))
      var_f_arr.append((f[i]-np.mean(f))**2)
      var_Ke_arr.append((K_e[i]-np.mean(K_e))**2)
 covarians = sum(covarians_arr)

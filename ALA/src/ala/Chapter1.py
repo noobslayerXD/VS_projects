@@ -1,4 +1,3 @@
-import numpy as np
 # Function to check if matrix is in REF
 
 def is_row_echelon_form(matrix):
@@ -40,14 +39,14 @@ def make_pivot_one(matrix, pivot_row, col):
 
 def eliminate_below(matrix, pivot_row, col):
     nrows = matrix.shape[0]
-    pivot_element = matrix[pivot_row, col]
+    matrix[pivot_row, col]
     for row in range(pivot_row + 1, nrows):
         factor = matrix[row, col]
         matrix[row] -= factor * matrix[pivot_row]
 
 # Implementing above functions
 def row_echelon_form(matrix):
-    nrows = matrix.shape[0]
+    matrix.shape[0]
     ncols = matrix.shape[1]
     pivot_row = 0
 # this will run for number of column times. If matrix has 3 columns this loop will run for 3 times
@@ -61,15 +60,3 @@ def row_echelon_form(matrix):
     return matrix
 
 
-matrix = np.array([[2,-2,4,-2],[2,1,10,7],[-4,4,-8,4],[4,-1,14,6]])
-print("Matrix Before Converting:")
-print(matrix)
-print()
-result = row_echelon_form(matrix)
-print("After Converting to Row Echelon Form:")
-print(result)
-if is_row_echelon_form(result):
-    print("In REF")
-else:
-    print("Not in REF--------------->")
-    

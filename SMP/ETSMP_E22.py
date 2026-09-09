@@ -1,6 +1,7 @@
-import numpy as np
-import scipy.stats as stats
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+
 # import seaborn as sns
 # import pandas as pd
 from scipy.integrate import quad
@@ -102,7 +103,7 @@ print("Den statistiske model vi bruger er den fra side 62 i statistik noten, da 
 mu_0 = 20
 mu_hat = Sample_mean_y
 s = variance_y ** 0.5
-1
+
 t = (mu_hat-mu_0)/(s*(len(y))**0.5)
 print("t:",t)
 # approximate p-value

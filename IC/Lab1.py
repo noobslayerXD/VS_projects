@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # import csv file
 data = np.genfromtxt('Testmålinger_Lab1.csv', delimiter=',', skip_header=1)
