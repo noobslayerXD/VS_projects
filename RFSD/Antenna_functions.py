@@ -92,15 +92,18 @@ def field_calcualtions(I0, dipole_length, r_array, wavelength_g, cos_theta, sin_
     k = 2 * np.pi / wavelength_g
     eta = 120 * np.pi  # intrinsic impedance of free space
 
+    E_cart_array = []
+    H_cart_array = []
+
     for i in range(N):
 
-        E_r = eta*(I0*dipole_length*cos_theta[i])/(2*np.pi*r_array[i]**2)*(1 + 1/(1j*k*r_array[i]))*np.e**(-1j*k*r_array[i])
-        E_theta = 1j*eta*(k*I0*dipole_length*sin_theta[i])/(4*np.pi*r_array[i])*(1 + 1/(1j*k*r_array[i]) - 1/((k*r_array[i])**2))*np.e**(-1j*k*r_array[i])
+        E_r = eta*(I0[i]*dipole_length*cos_theta[i])/(2*np.pi*r_array[i]**2)*(1 + 1/(1j*k*r_array[i]))*np.e**(-1j*k*r_array[i])
+        E_theta = 1j*eta*(k*I0[i]*dipole_length*sin_theta[i])/(4*np.pi*r_array[i])*(1 + 1/(1j*k*r_array[i]) - 1/((k*r_array[i])**2))*np.e**(-1j*k*r_array[i])
         E_phi = 0
 
         H_r = 0
         H_theta = 0
-        H_phi = 1j*(k*I0*dipole_length*sin_theta[i])/(4*np.pi*r_array[i])*(1 + 1/(1j*k*r_array[i]))*np.e**(-1j*k*r_array[i])
+        H_phi = 1j*(k*I0[i]*dipole_length*sin_theta[i])/(4*np.pi*r_array[i])*(1 + 1/(1j*k*r_array[i]))*np.e**(-1j*k*r_array[i])
 
         E_array = np.array([E_r, E_theta, E_phi])
         H_array = np.array([H_r, H_theta, H_phi])
@@ -153,27 +156,44 @@ def local_point_relation(measure_point, antenna_point):
     
     return r_array, s_hat_array, h_hat_array, s_array, h_array
 
-def measurement_global(s_hat, h_hat):
+def measurement_global(s_hat_array, h_hat_array):
     '''
     Parameters:
     - s_hat: Normalized direction vector fro mthe antenna psotion to the measurement point
     - h_hat: the dipole axis normal vector
     '''
 
-    s_hat = np.array(s_hat) # Stores all s_hat values in a numpy array
-    h_hat = np.array(h_hat) # Stores all h_hat values in a numpy array
+    s_hat_array = np.array(s_hat_array) # Stores all s_hat values in a numpy array
+    h_hat_array = np.array(h_hat_array) # Stores all h_hat values in a numpy array
 
-    # Equation 1.2 from the design note
-    r_hat = s_hat # The radial direction is the same as the direction from the antenna to the measurement point
-    phi_hat = np.cross(h_hat, s_hat)/np.linalg.norm(np.cross(h_hat, s_hat)) # Normalized cross product of h_hat and s_hat
-    theta_hat = np.cross(phi_hat, s_hat)/np.linalg.norm(np.cross(phi_hat, s_hat)) # Normalized cross product of phi_hat and s_hat
+    N = s_hat_array.shape[0]
 
-    # Equation 1.3 from the design note
-    R_mark = np.linalg.norm(s_hat) # Calculate the distance from the antenna to the measurement point
-    sin_theta = np.linalg.norm(np.cross(h_hat, s_hat)) # Calculate the sine of the polar angle
-    cos_theta = np.dot(h_hat, s_hat) # Calculate the cosine of the polar angle
+    r_hat_array = np.zeros_like(s_hat_array)
+    theta_hat_array = np.zeros_like(s_hat_array)
+    phi_hat_array = np.zeros_like(s_hat_array)
+    sin_theta_array = np.zeros(N)
+    cos_theta_array = np.zeros(N)
 
-    return r_hat, theta_hat, phi_hat, R_mark, sin_theta, cos_theta
+    for i in range(N):
+        s_hat = s_hat_array[i]
+        h_hat = h_hat_array[i]
+        # Equation 1.2 from the design note
+        r_hat = s_hat # The radial direction is the same as the direction from the antenna to the measurement point
+        phi_hat = np.cross(h_hat, s_hat)/np.linalg.norm(np.cross(h_hat, s_hat)) # Normalized cross product of h_hat and s_hat
+        theta_hat = np.cross(phi_hat, s_hat)/np.linalg.norm(np.cross(phi_hat, s_hat)) # Normalized cross product of phi_hat and s_hat
+
+        # Equation 1.3 from the design note
+        R_mark = np.linalg.norm(s_hat) # Calculate the distance from the antenna to the measurement point
+        sin_theta = np.linalg.norm(np.cross(h_hat, s_hat)) # Calculate the sine of the polar angle
+        cos_theta = np.dot(h_hat, s_hat) # Calculate the cosine of the polar angle
+
+        r_hat_array[i] = r_hat
+        theta_hat_array[i] = theta_hat
+        phi_hat_array[i] = phi_hat
+        sin_theta_array[i] = sin_theta
+        cos_theta_array[i] = cos_theta
+
+    return r_hat_array, theta_hat_array, phi_hat_array, R_mark, sin_theta_array, cos_theta_array
 
 def poynting_vector(E_array, H_array):
     '''
@@ -291,3 +311,118 @@ def coordinates(points, plot=False):
         plt.show(block=False)
 
     return np.array(segmentations)
+
+def directivity(Poynting):
+    D0 = np.linalg.norm(max(Poynting))/np.linalg.norm(np.average(Poynting))
+    return D0
+
+def plot_radiation_pattern(E_field, H_field, measurement_points, dB=False, title="3D Radiation Pattern"):
+    """
+    Plot a 3D radiation pattern from electric and magnetic fields.
+
+    Parameters
+    ----------
+    E_field : ndarray, shape (N, 3)
+        Electric field [Ex, Ey, Ez] at each measurement point.
+
+    H_field : ndarray, shape (N, 3)
+        Magnetic field [Hx, Hy, Hz] at each measurement point.
+
+    measurement_points : ndarray, shape (N, 3)
+        Cartesian coordinates of the measurement points.
+
+    dB : bool
+        If True, plot the radiation pattern in dB relative to the maximum.
+        If False, plot normalized linear power.
+
+    title : str
+        Plot title.
+    """
+
+    E_field = np.asarray(E_field)
+    H_field = np.asarray(H_field)
+    measurement_points = np.asarray(measurement_points)
+
+    # Check dimensions
+    if E_field.shape != H_field.shape:
+        raise ValueError(
+            f"E_field and H_field must have the same shape. "
+            f"Got {E_field.shape} and {H_field.shape}"
+        )
+
+    if E_field.ndim != 2 or E_field.shape[1] != 3:
+        raise ValueError(
+            "E_field and H_field must have shape (N, 3)."
+        )
+
+    if measurement_points.shape != E_field.shape:
+        raise ValueError(
+            f"measurement_points must have shape {E_field.shape}. "
+            f"Got {measurement_points.shape}"
+        )
+
+    # Calculate Poynting vector
+    S = 0.5 * np.real(
+        np.cross(E_field, np.conj(H_field))
+    )
+
+    # Magnitude of the Poynting vector
+    S_mag = np.linalg.norm(S, axis=1)
+
+    # Avoid division by zero
+    S_max = np.max(S_mag)
+
+    if S_max == 0:
+        raise ValueError("Poynting vector is zero everywhere.")
+
+    # Normalize
+    S_norm = S_mag / S_max
+
+    # Convert to dB if requested
+    if dB:
+        S_plot = 10 * np.log10(np.maximum(S_norm, 1e-12))
+
+        # Shift so maximum is 0 dB
+        S_plot = S_plot - np.max(S_plot)
+
+        # Convert dB radius into a positive plotting radius
+        # 0 dB -> 1, -40 dB -> 0
+        min_dB = -40
+        S_radius = np.clip((S_plot - min_dB) / abs(min_dB), 0, 1)
+
+    else:
+        S_radius = S_norm
+
+    # Unit vectors pointing from origin to measurement points
+    R = np.linalg.norm(measurement_points, axis=1)
+
+    x_hat = measurement_points[:, 0] / R
+    y_hat = measurement_points[:, 1] / R
+    z_hat = measurement_points[:, 2] / R
+
+    # Map radiation intensity onto sphere
+    X = S_radius * x_hat
+    Y = S_radius * y_hat
+    Z = S_radius * z_hat
+
+    # Plot
+    fig = plt.figure(figsize=(9, 8))
+    ax = fig.add_subplot(111, projection="3d")
+
+    ax.plot_trisurf(
+        X,
+        Y,
+        Z,
+        linewidth=0,
+        antialiased=True,
+        alpha=0.8
+    )
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.set_title(title)
+
+    ax.set_box_aspect([1, 1, 1])
+
+    plt.show()
