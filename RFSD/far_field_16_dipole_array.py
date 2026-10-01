@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # ============================================================
 # 16-element infinitesimal dipole array
