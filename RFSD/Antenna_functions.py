@@ -197,10 +197,7 @@ def compute_total_field(observation_points, antenna_points, current, wavelength)
     - observation_points: (..., 3) array (e.g. a (n_theta, n_phi, 3) grid)
     - antenna_points: (N+1, 3) wire sample points
     - current: (N,) current of each Hertz dipole
-    - wavelength: wavelength used for k = 2*pi/wavelength. The guided
-      wavelength is used throughout this project, as in the reference
-      implementation (github.com/PhillipRambo/meander_line_simulation).
-
+    - wavelength: wavelength used for k = 2*pi/wavelength.
     Returns:
     - E, H: complex arrays with the same shape as observation_points
     """
