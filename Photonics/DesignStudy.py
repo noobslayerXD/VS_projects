@@ -30,9 +30,9 @@ CFG = {
     "dx": 10, "dy": 10,               # mesh resolution
 
     # --- channels (one per laser in the array) ---
-    "n_channels": 4,               # number of wavelength channels / output ports
+    "n_channels": 3,               # number of wavelength channels / output ports
     "lambda_center": 1550.0,       # nm
-    "channel_spacing": 1.6,        # nm (~200 GHz)
+    "channel_spacing": 2,        # nm (~200 GHz)
 
     # --- AWG ---
     "order": None,                 # diffraction order m; None = choose so FSR = N * spacing
