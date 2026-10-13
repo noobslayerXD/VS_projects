@@ -8,14 +8,14 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (enables 3D projection)
 frequency = 1060e6  # Frequency in Hz 
 
 # ---------------- Simulation parameters (ADJUSTABLE) ----------------
-hertz_dipole_resolution = 10000   # number of points along the mander-line antenna (higher value = more accurate simulation)
-measure_distance = 10.0  # distance from the antenna to the measurement sphere (in meters)
+hertz_dipole_resolution = 106   # number of points along the mander-line antenna (higher value = more accurate simulation)
+measure_distance = 100.0  # distance from the antenna to the measurement sphere (in meters)
 measure_resolution = 100000  # number of points on the measurement sphere
 
 # ---------------- Antenna geometry (ADJUSTABLE) ----------------
 total_length, wavelength_g, points = af.maenderline_antenna_geometry(hertz_dipole_resolution, plot=True)
 dipole_length = total_length/ hertz_dipole_resolution
-
+print(total_length)
 # ---------------- Measurement sphere (ADJUSTABLE) ----------------
 measurement_points = af.measurement_sphere(measure_distance, measure_resolution, plot=True)  # Example usage of the measurement_sphere function
 
@@ -37,4 +37,4 @@ Poynting = af.poynting_vector(E_cart_total,H_cart_total)
 D0 = af.directivity(Poynting)
 print(D0)
 
-af.plot_radiation_pattern(E_cart_array, H_cart_array , measurement_points)
+#af.plot_radiation_pattern(E_cart_array, H_cart_array , measurement_points)

@@ -318,48 +318,10 @@ def directivity(Poynting):
 
 def plot_radiation_pattern(E_field, H_field, measurement_points, dB=False, title="3D Radiation Pattern"):
     """
-    Plot a 3D radiation pattern from electric and magnetic fields.
-
-    Parameters
-    ----------
-    E_field : ndarray, shape (N, 3)
-        Electric field [Ex, Ey, Ez] at each measurement point.
-
-    H_field : ndarray, shape (N, 3)
-        Magnetic field [Hx, Hy, Hz] at each measurement point.
-
-    measurement_points : ndarray, shape (N, 3)
-        Cartesian coordinates of the measurement points.
-
-    dB : bool
-        If True, plot the radiation pattern in dB relative to the maximum.
-        If False, plot normalized linear power.
-
-    title : str
-        Plot title.
+    
     """
 
-    E_field = np.asarray(E_field)
-    H_field = np.asarray(H_field)
-    measurement_points = np.asarray(measurement_points)
-
-    # Check dimensions
-    if E_field.shape != H_field.shape:
-        raise ValueError(
-            f"E_field and H_field must have the same shape. "
-            f"Got {E_field.shape} and {H_field.shape}"
-        )
-
-    if E_field.ndim != 2 or E_field.shape[1] != 3:
-        raise ValueError(
-            "E_field and H_field must have shape (N, 3)."
-        )
-
-    if measurement_points.shape != E_field.shape:
-        raise ValueError(
-            f"measurement_points must have shape {E_field.shape}. "
-            f"Got {measurement_points.shape}"
-        )
+    
 
     # Calculate Poynting vector
     S = 0.5 * np.real(
