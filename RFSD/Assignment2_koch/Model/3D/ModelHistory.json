@@ -583,6 +583,145 @@
                 "     .StoreSettings",
                 "End With"
             ]
+        },
+        {
+            "caption": "define brick: Koch_dipole/Arm_right:GND",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "With Brick",
+                "     .Reset ",
+                "     .Name \"GND\" ",
+                "     .Component \"Koch_dipole/Arm_right\" ",
+                "     .Material \"Denim\" ",
+                "     .Xrange \"-100\", \"100\" ",
+                "     .Yrange \"-20\", \"20\" ",
+                "     .Zrange \"-2.875\", \"2.84\" ",
+                "     .Create",
+                "End With"
+            ]
+        },
+        {
+            "caption": "define brick: Koch_dipole/Arm_right:GND1",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "With Brick",
+                "     .Reset ",
+                "     .Name \"GND1\" ",
+                "     .Component \"Koch_dipole/Arm_right\" ",
+                "     .Material \"Denim\" ",
+                "     .Xrange \"-100\", \"100\" ",
+                "     .Yrange \"-10\", \"10\" ",
+                "     .Zrange \"-2.875\", \"-2.84\" ",
+                "     .Create",
+                "End With"
+            ]
+        },
+        {
+            "caption": "boolean insert shapes: Koch_dipole/Arm_right:GND, Koch_dipole/Arm_right:GND1",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Solid.Insert \"Koch_dipole/Arm_right:GND\", \"Koch_dipole/Arm_right:GND1\""
+            ]
+        },
+        {
+            "caption": "delete shape: Koch_dipole/Arm_right:GND",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Solid.Delete \"Koch_dipole/Arm_right:GND\""
+            ]
+        },
+        {
+            "caption": "delete shape: Koch_dipole/Arm_right:GND1",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Solid.Delete \"Koch_dipole/Arm_right:GND1\""
+            ]
+        },
+        {
+            "caption": "define brick: component1:GND",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "With Brick",
+                "     .Reset ",
+                "     .Name \"GND\" ",
+                "     .Component \"component1\" ",
+                "     .Material \"PEC\" ",
+                "     .Xrange \"-115\", \"115\" ",
+                "     .Yrange \"-10\", \"40\" ",
+                "     .Zrange \"-2.875\", \"-2.84\" ",
+                "     .Create",
+                "End With"
+            ]
+        },
+        {
+            "caption": "delete shape: component1:GND",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Solid.Delete \"component1:GND\""
+            ]
+        },
+        {
+            "caption": "clear picks",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Pick.ClearAllPicks"
+            ]
+        },
+        {
+            "caption": "pick end point",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Pick.PickEndpointFromId \"Koch_dipole/Arm_left:Arm_left\", \"65\""
+            ]
+        },
+        {
+            "caption": "pick end point",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "Pick.PickEndpointFromId \"Koch_dipole/Arm_right:Arm_right\", \"33\""
+            ]
+        },
+        {
+            "caption": "define distance dimension",
+            "version": "2024.0|33.0.1|20230901",
+            "hidden": false,
+            "type": "vba",
+            "code": [
+                "With Dimension",
+                "    .Reset",
+                "    .CreationType \"picks\"",
+                "    .SetType \"Distance\"",
+                "    .SetID \"0\"",
+                "    .SetOrientation \"Smart Mode\"",
+                "    .SetDistance \"-20.053677\"",
+                "    .SetViewVector \"-0.055555\", \"-0.060766\", \"-0.996605\"",
+                "    .SetConnectedElement1 \"Koch_dipole/Arm_left:Arm_left\"",
+                "    .SetConnectedElement2 \"Koch_dipole/Arm_right:Arm_right\"",
+                "    .Create",
+                "End With",
+                "",
+                "Pick.ClearAllPicks"
+            ]
         }
     ]
 }

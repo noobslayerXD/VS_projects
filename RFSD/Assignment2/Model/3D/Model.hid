@@ -23,9 +23,7 @@ false
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:Substrate"
-
 [end]content
 [start]recover_picks
 1
@@ -41,9 +39,7 @@ Solid.Delete "component1:Substrate"
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:Antenna"
-
 [end]content
 [start]recover_picks
 1
@@ -59,11 +55,8 @@ Solid.Delete "component1:Antenna"
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:Wire"
-
 Solid.Delete "component1:Wire"
-
 [end]content
 [start]recover_picks
 1
@@ -77,13 +70,11 @@ Solid.Delete "component1:Wire"
 7
 [end]block_index
 [start]command
-
 '@ define discrete port: 1
  (undo)
 [end]command
 [start]content
 Port.Delete "1"
-
 [end]content
 [start]recover_picks
 1
@@ -99,9 +90,7 @@ Port.Delete "1"
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:GND"
-
 [end]content
 [start]recover_picks
 1
@@ -145,13 +134,59 @@ Solid.Delete "component1:GND"
 15
 [end]block_index
 [start]command
-
 '@ define discrete face port: 2
  (undo)
 [end]command
 [start]content
 Port.Delete "2"
-
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+0
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+28
+[end]block_index
+[start]command
+[end]command
+[start]content
+Solid.Delete "component1:GND"
+Solid.Delete "component1:GND"
+Solid.Delete "component1:GND"
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+1
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+30
+[end]block_index
+[start]command
+[end]command
+[start]content
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+0
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+31
+[end]block_index
+[start]command
+[end]command
+[start]content
 [end]content
 [start]recover_picks
 1

@@ -5,6 +5,14 @@ type=s:HIDDENITEM
 problemclass=s::8:1000
 visibility=s:hidden
 creation=s:internal
+lifetime=s:surviveparchange
+result=s:1
+files=s:simulation_overview.json
+
+type=s:HIDDENITEM
+problemclass=s::8:1000
+visibility=s:hidden
+creation=s:internal
 lifetime=s:rebuild
 result=s:1
 files=s:Bandwidth Potential Port 1.rd1
@@ -16,14 +24,6 @@ creation=s:internal
 lifetime=s:rebuild
 result=s:1
 files=s:Directivity, constant Theta=90.rd1
-
-type=s:HIDDENITEM
-problemclass=s::8:1000
-visibility=s:hidden
-creation=s:internal
-lifetime=s:surviveparchange
-result=s:1
-files=s:simulation_overview.json
 
 type=s:DATA_FOLDER
 problemclass=s::8:1000
@@ -120,6 +120,36 @@ creation=s:internal
 lifetime=s:persistent
 result=s:0
 treepath=s:1D Results
+
+type=s:XYSIGNAL
+subtype=s:user
+problemclass=s::8:1000
+visibility=s:visible
+creation=s:internal
+lifetime=s:persistent
+result=s:0
+treepath=s:1D Results\Materials\Denim\Dispersive\Eps' (Fit)
+files=s:Denim_eps_re.sig
+
+type=s:XYSIGNAL
+subtype=s:user
+problemclass=s::8:1000
+visibility=s:visible
+creation=s:internal
+lifetime=s:persistent
+result=s:0
+treepath=s:1D Results\Materials\Denim\Dispersive\Eps'' (Fit)
+files=s:Denim_eps_im.sig
+
+type=s:XYSIGNAL
+subtype=s:user
+problemclass=s::8:1000
+visibility=s:visible
+creation=s:internal
+lifetime=s:persistent
+result=s:0
+treepath=s:1D Results\Materials\Denim\Dispersive\Eps TangD (Fit)
+files=s:Denim_eps_tgd.sig
 
 type=s:XYSIGNAL
 subtype=s:user
@@ -418,45 +448,6 @@ result=s:1
 treepath=s:1D Results\Reference Impedance\ZRef 1(1)
 files=s:ZRef1(1).sig
 
-type=s:RESULT_0D
-problemclass=s::8:1000
-visibility=s:hidden
-creation=s:internal
-lifetime=s:rebuild
-result=s:1
-treepath=s:1D Results\AutomaticRunInformation
-files=s:AutomaticRunInformation
-
-type=s:XYSIGNAL
-subtype=s:user
-problemclass=s::8:1000
-visibility=s:visible
-creation=s:internal
-lifetime=s:persistent
-result=s:0
-treepath=s:1D Results\Materials\Denim\Dispersive\Eps' (Fit)
-files=s:Denim_eps_re.sig
-
-type=s:XYSIGNAL
-subtype=s:user
-problemclass=s::8:1000
-visibility=s:visible
-creation=s:internal
-lifetime=s:persistent
-result=s:0
-treepath=s:1D Results\Materials\Denim\Dispersive\Eps'' (Fit)
-files=s:Denim_eps_im.sig
-
-type=s:XYSIGNAL
-subtype=s:user
-problemclass=s::8:1000
-visibility=s:visible
-creation=s:internal
-lifetime=s:persistent
-result=s:0
-treepath=s:1D Results\Materials\Denim\Dispersive\Eps TangD (Fit)
-files=s:Denim_eps_tgd.sig
-
 type=s:TABLE
 subtype=s:farfield polar linear
 problemclass=s::8:1000
@@ -621,4 +612,13 @@ result=s:1
 treepath=s:Tables\1D Results\Bandwidth Potential Port 1
 files=s:Bandwidth Potential Port 1.rt1
 files=s:Bandwidth Potential Port 1.rd1
+
+type=s:RESULT_0D
+problemclass=s::8:1000
+visibility=s:hidden
+creation=s:internal
+lifetime=s:rebuild
+result=s:1
+treepath=s:1D Results\AutomaticRunInformation
+files=s:AutomaticRunInformation
 

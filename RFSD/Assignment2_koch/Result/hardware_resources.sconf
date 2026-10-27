@@ -1,2 +1,2 @@
-FeatureKeywords:string:acceleration:cpu:6, acceleration:cpu:bg:std, acceleration:cpudevices:1, acceleration:uniblock
+FeatureKeywords:string:mcalc:facets:qq:acceleration:multi-thread, acceleration:cpu:4, acceleration:cpu:bg:std, acceleration:cpudevices:1, acceleration:multiblock, acceleration:multiblock:2, acceleration:singlestep
 ---

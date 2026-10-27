@@ -227,7 +227,7 @@ With Brick
      .Name "Antenna" 
      .Component "component1" 
      .Material "PEC" 
-     .Xrange "-141", "-0.1" 
+     .Xrange "-149", "-0.1" 
      .Yrange "-1.875", "1.875" 
      .Zrange "2.84", "2.875" 
      .Create
@@ -241,7 +241,7 @@ With Brick
      .Name "Wire" 
      .Component "component1" 
      .Material "PEC" 
-     .Xrange "0.01", "141" 
+     .Xrange "0.01", "149" 
      .Yrange "-1.875", "1.875" 
      .Zrange "2.84", "2.875" 
      .Create
@@ -720,4 +720,58 @@ UseDistributedComputingMemorySetting "False"
 MinDistributedComputingMemoryLimit "0"
 UseDistributedComputingSharedDirectory "False"
 OnlyConsider0D1DResultsForDC "False"
+
+'@ define brick: component1:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Brick
+     .Reset 
+     .Name "GND" 
+     .Component "component1" 
+     .Material "PEC" 
+     .Xrange "-160", "160" 
+     .Yrange "-10", "10" 
+     .Zrange "-0.035", "0" 
+     .Create
+End With
+
+'@ delete shape: component1:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Solid.Delete "component1:GND"
+
+'@ pick end point
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Pick.PickEndpointFromId "component1:Antenna", "4"
+
+'@ pick end point
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Pick.PickEndpointFromId "component1:Wire", "1"
+
+'@ define distance dimension
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Dimension
+    .Reset
+    .CreationType "picks"
+    .SetType "Distance"
+    .SetID "0"
+    .SetOrientation "Smart Mode"
+    .SetDistance "-23.790323"
+    .SetViewVector "0.103214", "-0.046206", "-0.993585"
+    .SetConnectedElement1 "component1:Antenna"
+    .SetConnectedElement2 "component1:Wire"
+    .Create
+End With
+
+Pick.ClearAllPicks
+
+'@ delete dimension 0
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Dimension
+    .RemoveDimension "0"
+End With
 

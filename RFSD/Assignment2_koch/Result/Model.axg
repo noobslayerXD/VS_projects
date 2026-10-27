@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CSTAuxiliaryGeometry version="20170928" creator="modeler">
   <Objects>
-    <Object name="Ports\port1" id="4">
+    <Object name="Ports\port1" id="5">
       <Cone position="0 0 0" direction="2 0 0" dimension="10 10 10" material="$PortMaterial$" text="1" short="1"/>
       <LineSet points="-1 0 0 1 0 0" stripped="1" material="$WireMaterial$"/>
     </Object>

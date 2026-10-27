@@ -23,9 +23,7 @@ false
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:Substrate"
-
 [end]content
 [start]recover_picks
 1
@@ -41,9 +39,7 @@ Solid.Delete "component1:Substrate"
 [start]command
 [end]command
 [start]content
-
 Solid.Delete "component1:wirePart"
-
 [end]content
 [start]recover_picks
 1
@@ -57,13 +53,90 @@ Solid.Delete "component1:wirePart"
 13
 [end]block_index
 [start]command
-
 '@ define discrete port: 1
  (undo)
 [end]command
 [start]content
 Port.Delete "1"
-
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+0
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+18
+[end]block_index
+[start]command
+[end]command
+[start]content
+Solid.Delete "Koch_dipole/Arm_right:GND"
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+1
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+19
+[end]block_index
+[start]command
+[end]command
+[start]content
+Solid.Delete "Koch_dipole/Arm_right:GND1"
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+1
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+23
+[end]block_index
+[start]command
+[end]command
+[start]content
+Solid.Delete "component1:GND"
+Solid.Delete "component1:GND"
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+1
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+26
+[end]block_index
+[start]command
+[end]command
+[start]content
+[end]content
+[start]recover_picks
+1
+[end]recover_picks
+[start]delete_solids
+0
+[end]delete_solids
+[end]undo_item
+[start]undo_item
+[start]block_index
+27
+[end]block_index
+[start]command
+[end]command
+[start]content
 [end]content
 [start]recover_picks
 1

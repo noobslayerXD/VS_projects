@@ -506,3 +506,98 @@ With FarfieldPlot
      .StoreSettings
 End With
 
+'@ define brick: Koch_dipole/Arm_right:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Brick
+     .Reset 
+     .Name "GND" 
+     .Component "Koch_dipole/Arm_right" 
+     .Material "Denim" 
+     .Xrange "-100", "100" 
+     .Yrange "-20", "20" 
+     .Zrange "-2.875", "2.84" 
+     .Create
+End With
+
+'@ define brick: Koch_dipole/Arm_right:GND1
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Brick
+     .Reset 
+     .Name "GND1" 
+     .Component "Koch_dipole/Arm_right" 
+     .Material "Denim" 
+     .Xrange "-100", "100" 
+     .Yrange "-10", "10" 
+     .Zrange "-2.875", "-2.84" 
+     .Create
+End With
+
+'@ boolean insert shapes: Koch_dipole/Arm_right:GND, Koch_dipole/Arm_right:GND1
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Solid.Insert "Koch_dipole/Arm_right:GND", "Koch_dipole/Arm_right:GND1"
+
+'@ delete shape: Koch_dipole/Arm_right:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Solid.Delete "Koch_dipole/Arm_right:GND"
+
+'@ delete shape: Koch_dipole/Arm_right:GND1
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Solid.Delete "Koch_dipole/Arm_right:GND1"
+
+'@ define brick: component1:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Brick
+     .Reset 
+     .Name "GND" 
+     .Component "component1" 
+     .Material "PEC" 
+     .Xrange "-115", "115" 
+     .Yrange "-10", "40" 
+     .Zrange "-2.875", "-2.84" 
+     .Create
+End With
+
+'@ delete shape: component1:GND
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Solid.Delete "component1:GND"
+
+'@ clear picks
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Pick.ClearAllPicks
+
+'@ pick end point
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Pick.PickEndpointFromId "Koch_dipole/Arm_left:Arm_left", "65"
+
+'@ pick end point
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+Pick.PickEndpointFromId "Koch_dipole/Arm_right:Arm_right", "33"
+
+'@ define distance dimension
+
+'[VERSION]2024.0|33.0.1|20230901[/VERSION]
+With Dimension
+    .Reset
+    .CreationType "picks"
+    .SetType "Distance"
+    .SetID "0"
+    .SetOrientation "Smart Mode"
+    .SetDistance "-20.053677"
+    .SetViewVector "-0.055555", "-0.060766", "-0.996605"
+    .SetConnectedElement1 "Koch_dipole/Arm_left:Arm_left"
+    .SetConnectedElement2 "Koch_dipole/Arm_right:Arm_right"
+    .Create
+End With
+
+Pick.ClearAllPicks
+
