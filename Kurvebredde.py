@@ -12,8 +12,13 @@ from shapely.geometry import LineString, Point
 # KONFIGURATION
 # ============================================================
 
-HORSENS_ST     = (9.8355, 55.8630)            # lon, lat (Horsens Station)
-AARHUS_H       = (10.2045, 56.1500)           # lon, lat (Aarhus H)
+# Stationer langs strækningen (lon, lat). Første og sidste afgrænser strækningen.
+STATIONS = {
+    "Horsens":     (9.8355, 55.8630),
+    "Skanderborg": (9.9175, 56.0437),
+    "Viby J":      (10.1595, 56.1220),
+    "Aarhus H":    (10.2045, 56.1500),
+}
 BBOX           = (9.80, 55.84, 10.23, 56.16)  # west, south, east, north – kun Horsens–Aarhus
 
 # Banedanmarks hovedstrækninger (officiel geometri og kilometrering), hentet fra
@@ -22,6 +27,14 @@ HVDSTRK_FILE   = Path(__file__).parent / "data" / "Hovedstraekninger_HE_OD.geojs
 HVDSTRK        = "23"                         # Fredericia - Aarhus H
 
 SPEED_LIMIT_KMH = 160                         # vis alle steder hvor V_max er under denne
+
+# Startacceleration (m/s²). Inden for strækningen v²/(2a), som toget skal bruge for at
+# nå SPEED_LIMIT_KMH fra stilstand, kører toget alligevel langsommere ved stationerne,
+# så kurver dér ignoreres. Bremsning antages lige så hurtig (zone på begge sider).
+TRAINS = {
+    "Mireo":  0.96,
+    "Desiro": 1.10,
+}
 RAIL_CENTRE_MM  = 1_500                       # afstand mellem skinnemidter (ikke sporvidden 1435 mm)
 TRACK_CANT_MM   = 150                         # Sæt faktisk overhøjde her, hvis den kendes
 DEFICIENCY_MM   = 150                         # tilladt manglende overhøjde (personvogne)
@@ -46,16 +59,17 @@ hvdstrk = gpd.read_file(HVDSTRK_FILE)
 hvdstrk = hvdstrk[hvdstrk["HVDSTRK"].astype(str) == HVDSTRK].to_crs(epsg=32632)
 
 stations_utm = gpd.GeoSeries(
-    [Point(HORSENS_ST), Point(AARHUS_H)], crs="EPSG:4326"
+    [Point(lonlat) for lonlat in STATIONS.values()], index=list(STATIONS), crs="EPSG:4326"
 ).to_crs(epsg=32632)
 
 # Strækningen består af flere stykker (fx godsspor ved Aarhus); brug det stykke
-# der går gennem både Horsens og Aarhus H. Det er ét centerspor for hele banen.
+# der går gennem alle stationerne. Det er ét centerspor for hele banen.
 main = hvdstrk.loc[
     hvdstrk.geometry.apply(lambda g: max(g.distance(p) for p in stations_utm)).idxmin()
 ]
 track = shapely.line_merge(main.geometry)
-pos_horsens, pos_aarhus = (track.project(p) for p in stations_utm)
+station_pos = stations_utm.apply(track.project)   # position langs sporet (m)
+pos_horsens, pos_aarhus = station_pos.iloc[0], station_pos.iloc[-1]
 
 def official_km(pos_m: np.ndarray) -> np.ndarray:
     """Banedanmarks km-position, lineært interpoleret mellem stykkets START_KM og SLUT_KM."""
@@ -185,6 +199,7 @@ k = HALF_CHORD_M // STEP_M
 pos = np.arange(0, track.length, STEP_M)
 pts = shapely.get_coordinates(shapely.line_interpolate_point(track, pos))
 samples = pd.DataFrame({"x": pts[:, 0], "y": pts[:, 1], "radius": track_radii(pts, k)})
+samples["pos"] = pos
 samples["km"] = official_km(pos)
 samples["km_horsens"] = np.abs(pos - pos_horsens) / 1000
 
@@ -209,12 +224,35 @@ for _, g in slow.groupby("place"):
         "km_start": g["km"].min(),
         "km_end":   g["km"].max(),
         "km_horsens": g["km_horsens"].min(),
+        "pos_start": g["pos"].min(),
+        "pos_end":   g["pos"].max(),
         "x":        sharpest["x"],
         "y":        sharpest["y"],
         "radius":   sharpest["radius"],
         "v_max":    sharpest["v_max"],
     })
 places = pd.DataFrame(places).sort_values("km_horsens", ignore_index=True)
+
+# ============================================================
+# 5b) Ignorér kurver tæt på stationer, hvor toget ikke kan nå SPEED_LIMIT_KMH
+#     s = v²/(2a)   (konstant startacceleration – i praksis falder a med farten)
+# ============================================================
+
+v_limit = SPEED_LIMIT_KMH / 3.6
+accel_dist = {name: v_limit**2 / (2 * a) for name, a in TRAINS.items()}
+
+def station_zone(pos_start: float, pos_end: float, dist: float) -> str | None:
+    """Navnet på stationen hvis hele kurven ligger inden for dist fra den, ellers None."""
+    for name, p in station_pos.items():
+        if p - dist <= pos_start and pos_end <= p + dist:
+            return name
+    return None
+
+for train, dist in accel_dist.items():
+    places[train] = [
+        station_zone(r.pos_start, r.pos_end, dist) for r in places.itertuples()
+    ]
+places["limits_any"] = places[list(TRAINS)].isna().any(axis=1)
 
 places_geo = gpd.GeoSeries(
     gpd.points_from_xy(places["x"], places["y"]), crs="EPSG:32632"
@@ -239,9 +277,15 @@ def nearest_row(pt_utm: Point, gdf_utm: gpd.GeoDataFrame | None) -> pd.Series | 
 
 print(f"\nALLE STEDER HORSENS–AARHUS MED V_MAX UNDER {SPEED_LIMIT_KMH} KM/T "
       f"({len(places)} steder):\n")
-print(f"{'#':>3}  {'Banedanmark km':>15}  {'Fra Horsens':>11}  {'Lat':>10}  {'Lon':>10}  "
-      f"{'Min. radius':>11}  {'V_max':>10}  {'BTR-afsnit':<18}  {'BTR-spor':<10}")
-print("-" * 115)
+for train, dist in accel_dist.items():
+    n_limit = places[train].isna().sum()
+    print(f"  {train:<7} a = {TRAINS[train]:.2f} m/s²: 0–{SPEED_LIMIT_KMH} km/t på {dist:5.0f} m "
+          f"→ {n_limit} steder begrænser, {len(places) - n_limit} ligger i stationszoner")
+print(f"\n{'#':>3}  {'Banedanmark km':>15}  {'Fra Horsens':>11}  {'Lat':>10}  {'Lon':>10}  "
+      f"{'Min. radius':>11}  {'V_max':>10}  "
+      + "".join(f"{t:<26}" for t in TRAINS)
+      + f"{'BTR-afsnit':<18}  {'BTR-spor':<10}")
+print("-" * (115 + 26 * len(TRAINS)))
 
 for rank, (row, geom) in enumerate(zip(places.itertuples(), places_geo), 1):
     pt_utm = Point(row.x, row.y)
@@ -253,6 +297,11 @@ for rank, (row, geom) in enumerate(zip(places.itertuples(), places_geo), 1):
         section_name = str(segment.get("STRKAFS_NAVN") or "ukendt")
         track_name = str(segment.get("SPORNUMMER") or "ukendt")
 
+    train_cols = "".join(
+        f"{'begrænser' if pd.isna(st) else 'ignoreres (' + st + ')':<26}"
+        for st in (getattr(row, t) for t in TRAINS)
+    )
+
     print(
         f"#{rank:2d}  "
         f"{row.km_start:7.3f}–{row.km_end:7.3f}  "
@@ -261,6 +310,7 @@ for rank, (row, geom) in enumerate(zip(places.itertuples(), places_geo), 1):
         f"{geom.x:10.6f}  "
         f"{row.radius:9.0f} m  "
         f"{row.v_max:5.1f} km/t  "
+        f"{train_cols}"
         f"{section_name[:18]:<18}  "
         f"{track_name[:10]:<10}"
     )
@@ -288,10 +338,17 @@ sc = ax.scatter(
     s=2, vmin=80, vmax=250
 )
 
+limits = places[places["limits_any"]]
+ignored = places[~places["limits_any"]]
 ax.scatter(
-    places["x"], places["y"],
+    limits["x"], limits["y"],
     facecolors="none", edgecolors="red", s=80, linewidths=1.5, zorder=5,
-    label=f"V_max < {SPEED_LIMIT_KMH} km/t"
+    label=f"V_max < {SPEED_LIMIT_KMH} km/t (begrænser)"
+)
+ax.scatter(
+    ignored["x"], ignored["y"],
+    facecolors="none", edgecolors="grey", s=80, linewidths=1.5, zorder=5,
+    label="V_max < {} km/t, men i stationszone ({})".format(SPEED_LIMIT_KMH, " og ".join(TRAINS))
 )
 
 for rank, row in enumerate(places.itertuples(), 1):
@@ -302,9 +359,10 @@ for rank, row in enumerate(places.itertuples(), 1):
         fontsize=7, color="darkred", fontweight="bold"
     )
 
-for name, st in zip(["Horsens", "Aarhus H"], stations_utm):
+for name, p in station_pos.items():
+    st = track.interpolate(p)
     ax.plot(st.x, st.y, "ks", markersize=6)
-    ax.annotate(name, xy=(st.x, st.y), xytext=(-10, -14), textcoords="offset points")
+    ax.annotate(name, xy=(st.x, st.y), xytext=(8, -14), textcoords="offset points")
 
 plt.colorbar(sc, ax=ax, label="V_max (km/t)")
 ax.set_title(f"Horsens–Aarhus: V_max ud fra kurveradius "
