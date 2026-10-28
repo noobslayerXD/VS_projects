@@ -4,34 +4,70 @@ import numpy as np
 import osmnx as ox
 import pandas as pd
 import requests
-from shapely.geometry import Point
+import shapely
+from shapely.geometry import LineString, Point
+from shapely.ops import linemerge
 
 # ============================================================
 # KONFIGURATION
 # ============================================================
 
-BBOX           = (9.7, 55.75, 10.3, 56.1)   # west, south, east, north
-THRESHOLD_M    = 5_000                        # kurver under denne radius vises
-GAUGE_MM       = 1_435
-TRACK_CANT_MM  = 180                            # Sæt faktisk overhøjde her, hvis den kendes
-DEFICIENCY_MM  = 150                          # Banedanmark standard (personvogne)
-G              = 9.81
+HORSENS_ST     = (9.8355, 55.8630)            # lon, lat (Horsens Station)
+AARHUS_H       = (10.2045, 56.1500)           # lon, lat (Aarhus H)
+BBOX           = (9.80, 55.84, 10.23, 56.16)  # west, south, east, north – kun Horsens–Aarhus
+LINE_REF       = "23"                         # OSM ref for Fredericia–Aarhus (Østjyske Længdebane)
+
+SPEED_LIMIT_KMH = 160                         # vis alle steder hvor V_max er under denne
+RAIL_CENTRE_MM  = 1_500                       # afstand mellem skinnemidter (ikke sporvidden 1435 mm)
+TRACK_CANT_MM   = 150                         # Sæt faktisk overhøjde her, hvis den kendes
+DEFICIENCY_MM   = 150                         # tilladt manglende overhøjde (personvogne)
+G               = 9.81
+
+STEP_M          = 10                          # punktafstand ved resampling af sporet
+HALF_CHORD_M    = 100                         # radius beregnes over en korde på 2·HALF_CHORD_M
+MERGE_GAP_M     = 200                         # kurvestykker tættere end dette (langs banen) er samme sted
+BTR_MAX_DIST_M  = 50                          # BTR-segment skal ligge så tæt på for at blive brugt
 
 # Banedanmarks aktuelle åbne BTR-spordata.
-# Den tidligere ArcGIS-URL til strækningsregisteret er ikke længere gyldig.
 BTR_URL = (
     "https://gis.bane.dk/server/rest/services"
     "/OD/BTR_SPORDATA_M_OD/FeatureServer/0/query"
 )
 
 # ============================================================
-# 1) Hent jernbanegeometri (OSM)
+# 1) Hent jernbanegeometri (OSM) – kun hovedsporet Horsens–Aarhus
 # ============================================================
 
-rail = ox.features_from_bbox(bbox=BBOX, tags={"railway": ["rail"]})
+rail = ox.features_from_bbox(bbox=BBOX, tags={"railway": "rail"})
 rail = rail[rail.geometry.type == "LineString"]
-rail = rail.set_crs(epsg=4326, allow_override=True)
-rail_utm = rail.to_crs(epsg=32632)
+
+def tag(gdf: gpd.GeoDataFrame, key: str) -> pd.Series:
+    """OSM-tag som kolonne (NaN hvis tagget slet ikke findes i data)."""
+    return gdf[key] if key in gdf.columns else pd.Series(np.nan, index=gdf.index)
+
+# ref=23 er Østjyske Længdebane. Den Jyske Midtbane (Skanderborg–Silkeborg),
+# Odderbanen, sidespor, rangerspor og sporskifteforbindelser sorteres fra.
+line = rail[(tag(rail, "ref") == LINE_REF) & tag(rail, "service").isna()]
+line_utm = line.to_crs(epsg=32632)
+
+stations_utm = gpd.GeoSeries(
+    [Point(HORSENS_ST), Point(AARHUS_H)], crs="EPSG:4326"
+).to_crs(epsg=32632)
+
+# OSM deler sporet op i mange korte ways. Sæt dem sammen til sammenhængende spor,
+# så kurver ikke bliver skåret over ved hver way-grænse.
+tracks = list(shapely.get_parts(linemerge(list(line_utm.geometry))))
+
+# Det længste spor bruges som reference for kilometrering fra Horsens.
+reference = max(tracks, key=lambda t: t.length)
+pos_horsens, pos_aarhus = (reference.project(p) for p in stations_utm)
+
+def km_from_horsens(pts: np.ndarray) -> np.ndarray:
+    """Afstand langs banen fra Horsens (km), uanset hvilken vej referencen er tegnet."""
+    pos = reference.project(shapely.points(pts))
+    return np.sign(pos_aarhus - pos_horsens) * (pos - pos_horsens) / 1000
+
+stretch_km = abs(pos_aarhus - pos_horsens) / 1000
 
 # ============================================================
 # 2) Hent BTR-spordata fra Banedanmarks åbne data (GeoJSON)
@@ -81,21 +117,28 @@ def fetch_btr_segments(bbox) -> gpd.GeoDataFrame | None:
             offset += len(page_features)
 
         if not features:
-            print("⚠ BTR-forespørgsel returnerede ingen data — falder tilbage til D=0.")
+            print("⚠ BTR-forespørgsel returnerede ingen data — fortsætter uden BTR-info.")
             return None
 
         return gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     except (requests.RequestException, ValueError) as e:
-        print(f"⚠ BTR-forespørgsel fejlede ({e}) — falder tilbage til D=0.")
+        print(f"⚠ BTR-forespørgsel fejlede ({e}) — fortsætter uden BTR-info.")
         return None
 
 btr = fetch_btr_segments(BBOX)
 
+# Behold kun BTR-segmenter langs hovedsporet (ikke fx sporet vest for Skanderborg).
+btr_utm = None
+if btr is not None:
+    btr_utm = btr.to_crs(epsg=32632)
+    corridor = line_utm.geometry.union_all().buffer(BTR_MAX_DIST_M)
+    btr_utm = btr_utm[btr_utm.intersects(corridor)]
+
 # ============================================================
 # 3) Sammenhæng mellem hastighed, radius og overhøjde
-#    V² = g·R·(D+I)/G
-#    D_req = V²·G/(g·R) - I
-#    V_max = 3.6·√(g·R·(D+I)/G)
+#    V² = g·R·(D+I)/e        (e = afstand mellem skinnemidter)
+#    D_req = V²·e/(g·R) - I
+#    V_max = 3.6·√(g·R·(D+I)/e)
 # ============================================================
 
 def required_cant_mm(speed_kmh: float, radius_m: float) -> float:
@@ -108,149 +151,181 @@ def required_cant_mm(speed_kmh: float, radius_m: float) -> float:
     rekonstruere den samme hastighed.
     """
     V = speed_kmh / 3.6
-    D_mm = (V**2 * (GAUGE_MM/1000) / (G * radius_m) - DEFICIENCY_MM/1000) * 1000
+    D_mm = (V**2 * (RAIL_CENTRE_MM/1000) / (G * radius_m) - DEFICIENCY_MM/1000) * 1000
     return max(D_mm, 0.0)
 
 def max_speed_kmh(radius_m: np.ndarray | float, cant_mm: float = TRACK_CANT_MM) -> np.ndarray | float:
     """Beregn v_max ud fra radius og kendt/antaget overhøjde."""
     D = cant_mm / 1000
     I = DEFICIENCY_MM / 1000
-    G_m = GAUGE_MM / 1000
-    return 3.6 * np.sqrt(G * radius_m * (D + I) / G_m)
+    e = RAIL_CENTRE_MM / 1000
+    return 3.6 * np.sqrt(G * radius_m * (D + I) / e)
 
 # ============================================================
-# 4) Vektoriseret kurveradius per segment
+# 4) Kurveradius langs hvert spor
 # ============================================================
 
-def segment_radii(coords: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    if len(coords) < 3:
-        return np.empty(0), np.empty((0, 2))
-    p1, p2, p3 = coords[:-2], coords[1:-1], coords[2:]
+def resample(track: LineString, step: float) -> np.ndarray:
+    """Punkter med fast afstand langs sporet (OSM-knuder ligger meget ujævnt)."""
+    dists = np.arange(0, track.length, step)
+    return shapely.get_coordinates(shapely.line_interpolate_point(track, dists))
+
+def track_radii(pts: np.ndarray, k: int) -> np.ndarray:
+    """
+    Omskreven cirkel gennem punkterne i-k, i, i+k. En lang korde udglatter
+    små unøjagtigheder i OSM-geometrien, som ellers giver falske skarpe kurver.
+    Punkter nærmere end k fra sporets ender får radius = inf.
+    """
+    radii = np.full(len(pts), np.inf)
+    if len(pts) < 2*k + 1:
+        return radii
+    p1, p2, p3 = pts[:-2*k], pts[k:-k], pts[2*k:]
     a = np.linalg.norm(p2 - p1, axis=1)
     b = np.linalg.norm(p3 - p2, axis=1)
     c = np.linalg.norm(p3 - p1, axis=1)
-    s = (a + b + c) / 2
-    area = np.sqrt(np.maximum(s*(s-a)*(s-b)*(s-c), 1e-12))
-    return (a * b * c) / (4 * area), p2
+    u, v = p2 - p1, p3 - p1
+    cross = np.abs(u[:, 0]*v[:, 1] - u[:, 1]*v[:, 0])
+    with np.errstate(divide="ignore"):
+        radii[k:-k] = np.where(cross > 1e-9, a * b * c / (2 * cross), np.inf)
+    return radii
 
-all_radii, all_points = [], []
-for line in rail_utm.geometry:
-    r, pts = segment_radii(np.array(line.coords))
-    if len(r):
-        all_radii.append(r)
-        all_points.append(pts)
+k = HALF_CHORD_M // STEP_M
+samples = []   # én DataFrame pr. spor
+for track_id, track in enumerate(tracks):
+    pts = resample(track, STEP_M)
+    df = pd.DataFrame({"x": pts[:, 0], "y": pts[:, 1], "radius": track_radii(pts, k)})
+    df["track"] = track_id
+    df["km"] = km_from_horsens(pts)
+    samples.append(df)
 
-radii  = np.concatenate(all_radii)
-points = np.vstack(all_points)
-
-# ============================================================
-# 5) Filtrér og find top-10
-# ============================================================
-
-mask     = radii < THRESHOLD_M
-radii_f  = radii[mask]
-points_f = points[mask]
-
-k       = min(10, len(radii_f))
-top_idx = np.argpartition(radii_f, k-1)[:k]
-top_idx = top_idx[np.argsort(radii_f[top_idx])]
+samples = pd.concat(samples, ignore_index=True)
+samples = samples[samples["km"].between(0, stretch_km)]
+samples["v_max"] = max_speed_kmh(samples["radius"].to_numpy())
 
 # ============================================================
-# 6) Konverter top-10 til lat/lon
+# 5) Find alle steder hvor V_max < SPEED_LIMIT_KMH
 # ============================================================
 
-top_geo = gpd.GeoSeries(
-    [Point(p) for p in points_f[top_idx]], crs="EPSG:32632"
+slow = samples[samples["v_max"] < SPEED_LIMIT_KMH].sort_values("km")
+
+# Punkter der ligger tæt langs banen er samme kurve – også når de ligger på
+# hvert sit spor (dobbeltspor), da kilometreringen er fælles for alle spor.
+slow["place"] = (slow["km"].diff() > MERGE_GAP_M / 1000).cumsum()
+
+places = []
+for _, g in slow.groupby("place"):
+    sharpest = g.loc[g["radius"].idxmin()]
+    places.append({
+        "km_start": g["km"].min(),
+        "km_end":   g["km"].max(),
+        "x":        sharpest["x"],
+        "y":        sharpest["y"],
+        "radius":   sharpest["radius"],
+        "v_max":    sharpest["v_max"],
+        "n_tracks": g["track"].nunique(),
+    })
+places = pd.DataFrame(places).sort_values("km_start", ignore_index=True)
+
+places_geo = gpd.GeoSeries(
+    gpd.points_from_xy(places["x"], places["y"]), crs="EPSG:32632"
 ).to_crs(epsg=4326)
 
 # ============================================================
-# 7) Slå nærmeste BTR-segment op
+# 6) Slå nærmeste BTR-segment og OSM-strækningshastighed op
 # ============================================================
 
-def lookup_btr_segment(pt_wgs84: Point, btr_gdf: gpd.GeoDataFrame) -> pd.Series | None:
-    """Finder nærmeste BTR-segment og returnerer hele rækken."""
-    if btr_gdf is None or btr_gdf.empty:
+def nearest_row(pt_utm: Point, gdf_utm: gpd.GeoDataFrame | None) -> pd.Series | None:
+    """Nærmeste række inden for BTR_MAX_DIST_M, ellers None."""
+    if gdf_utm is None or gdf_utm.empty:
         return None
-    btr_utm = btr_gdf.to_crs(epsg=32632)
-    pt_utm  = gpd.GeoSeries([pt_wgs84], crs=4326).to_crs(epsg=32632).iloc[0]
-    dists   = btr_utm.geometry.distance(pt_utm)
-    return btr_utm.loc[dists.idxmin()]
+    dists = gdf_utm.geometry.distance(pt_utm)
+    if dists.min() > BTR_MAX_DIST_M:
+        return None
+    return gdf_utm.loc[dists.idxmin()]
 
 # ============================================================
-# 8) Udskriv resultater
+# 7) Udskriv resultater
 # ============================================================
 
-print("\nTOP 10 SKARPESTE KURVER:\n")
-print(f"{'#':>3}  {'Lat':>10}  {'Lon':>10}  {'Radius':>10}  "
-      f"{'BTR-afsnit':<18}  {'Spor':<10}  {'Cant':>8}  {'V_max':>8}")
-print("-" * 100)
+print(f"\nALLE STEDER HORSENS–AARHUS MED V_MAX UNDER {SPEED_LIMIT_KMH} KM/T "
+      f"({len(places)} steder):\n")
+print(f"{'#':>3}  {'km fra Horsens':>14}  {'Lat':>10}  {'Lon':>10}  {'Min. radius':>11}  "
+      f"{'V_max':>10}  {'OSM-maks':>8}  {'Spor':>4}  {'BTR-afsnit':<18}  {'BTR-spor':<10}")
+print("-" * 120)
 
-for rank, (geom, i) in enumerate(zip(top_geo, top_idx), 1):
-    r = radii_f[i]
-    segment = lookup_btr_segment(geom, btr)
+for rank, (row, geom) in enumerate(zip(places.itertuples(), places_geo), 1):
+    pt_utm = Point(row.x, row.y)
+
+    osm_way = nearest_row(pt_utm, line_utm)
+    osm_speed = "?"
+    if osm_way is not None and pd.notna(osm_way.get("maxspeed")):
+        osm_speed = str(osm_way["maxspeed"])
+
     section_name = "ukendt"
     track_name = "ukendt"
+    segment = nearest_row(pt_utm, btr_utm)
     if segment is not None:
         section_name = str(segment.get("STRKAFS_NAVN") or "ukendt")
         track_name = str(segment.get("SPORNUMMER") or "ukendt")
 
-    v_max = max_speed_kmh(r, cant_mm=TRACK_CANT_MM)
-
     print(
         f"#{rank:2d}  "
+        f"{row.km_start:6.2f}–{row.km_end:6.2f}  "
         f"{geom.y:10.6f}  "
         f"{geom.x:10.6f}  "
-        f"{r:8.1f} m  "
+        f"{row.radius:9.0f} m  "
+        f"{row.v_max:5.1f} km/t  "
+        f"{osm_speed:>8}  "
+        f"{row.n_tracks:4d}  "
         f"{section_name[:18]:<18}  "
-        f"{track_name[:10]:<10}  "
-        f"{TRACK_CANT_MM:6.0f} mm  "
-        f"{v_max[0] if hasattr(v_max, '__len__') else v_max:6.1f} km/t"
+        f"{track_name[:10]:<10}"
     )
 
-print("\nNOTE: Banedanmarks aktuelle åbne BTR-spordata indeholder ikke linjehastighed.")
-print(f"      V_max beregnes derfor med TRACK_CANT_MM = {TRACK_CANT_MM:.0f} mm.")
+print(f"\nNOTE: V_max beregnes med overhøjde D = {TRACK_CANT_MM:.0f} mm og "
+      f"manglende overhøjde I = {DEFICIENCY_MM:.0f} mm.")
+print("      Banedanmarks åbne BTR-spordata indeholder ikke overhøjde eller linjehastighed.")
 print("      Hvis du kender faktisk overhøjde i sporet, skal TRACK_CANT_MM sættes til den værdi.")
+print("      'OSM-maks' er den skiltede strækningshastighed fra OpenStreetMap (til sammenligning).")
 
 # ============================================================
-# 9) Plot
+# 8) Plot
 # ============================================================
 
-fig, ax = plt.subplots(figsize=(11, 7))
+fig, ax = plt.subplots(figsize=(11, 9))
+
+if btr_utm is not None and not btr_utm.empty:
+    btr_utm.plot(ax=ax, color="steelblue", linewidth=1.5, alpha=0.5)
 
 sc = ax.scatter(
-    points_f[:, 0], points_f[:, 1],
-    c=radii_f, cmap="RdYlGn",
-    s=2, vmin=0, vmax=THRESHOLD_M
+    samples["x"], samples["y"],
+    c=samples["v_max"].clip(upper=250), cmap="RdYlGn",
+    s=2, vmin=80, vmax=250
 )
-
-# Plot BTR-segmenter hvis tilgængelige
-if btr is not None:
-    btr_utm = btr.to_crs(epsg=32632)
-    btr_utm.plot(ax=ax, color="steelblue", linewidth=1.5,
-                 alpha=0.5, label="BTR-spordata")
 
 ax.scatter(
-    points_f[top_idx, 0], points_f[top_idx, 1],
-    c="red", s=60, zorder=5, label="Top 10 skarpeste"
+    places["x"], places["y"],
+    facecolors="none", edgecolors="red", s=80, linewidths=1.5, zorder=5,
+    label=f"V_max < {SPEED_LIMIT_KMH} km/t"
 )
 
-# Annoteringer
-for geom, i in zip(top_geo, top_idx):
-    r = radii_f[i]
-    v          = max_speed_kmh(r, cant_mm=TRACK_CANT_MM)
-    v_val      = v[0] if hasattr(v, "__len__") else v
-    pt_utm     = gpd.GeoSeries([geom], crs=4326).to_crs(32632).iloc[0]
+for rank, row in enumerate(places.itertuples(), 1):
     ax.annotate(
-        f"{v_val:.0f} km/t",
-        xy=(pt_utm.x, pt_utm.y),
+        f"#{rank}",
+        xy=(row.x, row.y),
         xytext=(6, 6), textcoords="offset points",
         fontsize=7, color="darkred", fontweight="bold"
     )
 
-plt.colorbar(sc, ax=ax, label="Kurveradius (m)")
-ax.set_title(f"Horsens–Aarhus: Kurveradius og V_max (D={TRACK_CANT_MM:.0f} mm)")
-ax.set_xlabel("X (UTM)")
-ax.set_ylabel("Y (UTM)")
+for name, st in zip(["Horsens", "Aarhus H"], stations_utm):
+    ax.plot(st.x, st.y, "ks", markersize=6)
+    ax.annotate(name, xy=(st.x, st.y), xytext=(-10, -14), textcoords="offset points")
+
+plt.colorbar(sc, ax=ax, label="V_max (km/t)")
+ax.set_title(f"Horsens–Aarhus: V_max ud fra kurveradius "
+             f"(D={TRACK_CANT_MM:.0f} mm, I={DEFICIENCY_MM:.0f} mm)")
+ax.set_xlabel("X (UTM 32N, m)")
+ax.set_ylabel("Y (UTM 32N, m)")
+ax.set_aspect("equal")
 ax.legend()
 plt.tight_layout()
 plt.show()
