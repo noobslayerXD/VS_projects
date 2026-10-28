@@ -59,8 +59,8 @@ def gain(N):
 
 def rate_equations(t, y, I):
     N, S = y
-    dN = None        # TODO: right-hand side of the carrier equation
-    dS = None        # TODO: right-hand side of the photon equation
+    dN = eta_i * I / (q * V_act) - N / tau_sp(N) - v_g * gain(N) * S
+    dS = Gamma * beta * B * N**2 + Gamma * v_g * gain(N) * S - S / tau_ph 
     return [dN, dS]
 
 
