@@ -1,3 +1,6 @@
+import time
+from pathlib import Path
+
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,6 +31,14 @@ HALF_CHORD_M    = 100                         # radius beregnes over en korde p�
 MERGE_GAP_M     = 200                         # kurvestykker tættere end dette (langs banen) er samme sted
 BTR_MAX_DIST_M  = 50                          # BTR-segment skal ligge så tæt på for at blive brugt
 
+# Overpass-servere der prøves i rækkefølge (den første er osmnx' standard).
+OVERPASS_URLS = [
+    "https://overpass-api.de/api",
+    "https://overpass.private.coffee/api",
+    "https://overpass.kumi.systems/api",
+]
+OVERPASS_ROUNDS = 4                           # antal runder gennem alle servere
+
 # Banedanmarks aktuelle åbne BTR-spordata.
 BTR_URL = (
     "https://gis.bane.dk/server/rest/services"
@@ -38,7 +49,29 @@ BTR_URL = (
 # 1) Hent jernbanegeometri (OSM) – kun hovedsporet Horsens–Aarhus
 # ============================================================
 
-rail = ox.features_from_bbox(bbox=BBOX, tags={"railway": "rail"})
+def fetch_osm_rail(bbox) -> gpd.GeoDataFrame:
+    """
+    Henter railway=rail fra Overpass. Den offentlige server er ofte overbelastet
+    (502/503), så der prøves flere servere med stigende ventetid imellem.
+    Et vellykket svar gemmes i cache-mappen, så næste kørsel ikke behøver nettet.
+    """
+    wait_s = 10
+    for attempt in range(1, OVERPASS_ROUNDS + 1):
+        for url in OVERPASS_URLS:
+            ox.settings.overpass_url = url
+            try:
+                return ox.features_from_bbox(bbox=bbox, tags={"railway": "rail"})
+            except (ox._errors.ResponseStatusCodeError, requests.RequestException) as e:
+                first_line = str(e).splitlines()[0]
+                print(f"⚠ Overpass ({url}) fejlede: {first_line}")
+        if attempt < OVERPASS_ROUNDS:
+            print(f"  Prøver igen om {wait_s} s (forsøg {attempt + 1}/{OVERPASS_ROUNDS}) ...")
+            time.sleep(wait_s)
+            wait_s *= 2
+    raise SystemExit("Kunne ikke hente OSM-data fra nogen Overpass-server. Prøv igen senere.")
+
+ox.settings.cache_folder = Path(__file__).parent / "cache"
+rail = fetch_osm_rail(BBOX)
 rail = rail[rail.geometry.type == "LineString"]
 
 def tag(gdf: gpd.GeoDataFrame, key: str) -> pd.Series:
