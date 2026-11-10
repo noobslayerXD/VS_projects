@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CSTAuxiliaryGeometry version="20170928">
+  <Objects>
+    <Object name="Components\Open CASCADE STEP translator 7.9 1/Open CASCADE STEP translator 7.9 1.1:Open CASCADE STEP translator 7.9 1.1" id="1">
+      <LineSet points="0.049999997 0 -0.764893413 0.049999997 0.827026725 -0.764893413 0 0 0 0 0 0 0.199854761 0 -0.764893413 0.199854761 0.827026725 -0.764893413 0.199854761 0.827026725 0 0.199854761 0 0 -0.049999997 0 -0.764893413 -0.049999997 0.827026725 -0.764893413 -0.049999997 0.827026725 0 -0.049999997 0 0 -0.049999997 0.827026725 0.825514078 -0.049999997 0 0.825514078 0.049999997 0.827026725 0.825514078 0.049999997 0 0.825514078 0.199854761 0.827026725 0.825514078 0.199854761 0 0.825514078" lines="0 8 1 9 4 0 4 5 5 1 5 6 6 16 7 4 8 9 9 10 10 12 11 8 12 13 12 14 13 11 13 15 14 16 15 17 16 17 17 7" material="$ConnectedMaterial$"/>
+    </Object>
+    <Object name="Ports\port1" id="2">
+      <LineSet points="-0.049999997 0 -0.764893413 -0.049999997 0.827026725 -0.764893413 -0.049999997 0.827026725 0 -0.049999997 0 0 0.049999997 0 -0.764893413 0.049999997 0.827026725 -0.764893413 0.049999997 0.827026725 0 0.049999997 0 0 -0.049999997 0.827026725 0.825514078 -0.049999997 0 0.825514078 0.049999997 0.827026725 0.825514078 0.049999997 0 0.825514078" lines="0 1 1 2 2 8 3 0 4 0 4 5 5 1 5 6 6 10 7 4 8 9 8 10 9 3 9 11 10 11 11 7" material="$ConnectedMaterial$"/>
+      <LineSet points="0.049999997 0 -0.764893413 0.049999997 0.827026725 -0.764893413 0 0 0 0 0 0 0.199854761 0 -0.764893413 0.199854761 0.827026725 -0.764893413 0.199854761 0.827026725 0 0.199854761 0 0 -0.049999997 0 -0.764893413 -0.049999997 0.827026725 -0.764893413 -0.049999997 0.827026725 0 -0.049999997 0 0 -0.049999997 0.827026725 0.825514078 -0.049999997 0 0.825514078 0.049999997 0.827026725 0.825514078 0.049999997 0 0.825514078 0.199854761 0.827026725 0.825514078 0.199854761 0 0.825514078" lines="0 8 1 9 4 0 4 5 5 1 5 6 6 16 7 4 8 9 9 10 10 12 11 8 12 13 12 14 13 11 13 15 14 16 15 17 16 17 17 7" material="$ConnectedMaterial$"/>
+    </Object>
+    <Object name="Components\Open CASCADE STEP translator 7.9 1/Open CASCADE STEP translator 7.9 1.2:Open CASCADE STEP translator 7.9 1.2" id="3">
+      <LineSet points="-0.049999997 0 -0.764893413 -0.049999997 0.827026725 -0.764893413 -0.049999997 0.827026725 0 -0.049999997 0 0 0.049999997 0 -0.764893413 0.049999997 0.827026725 -0.764893413 0.049999997 0.827026725 0 0.049999997 0 0 -0.049999997 0.827026725 0.825514078 -0.049999997 0 0.825514078 0.049999997 0.827026725 0.825514078 0.049999997 0 0.825514078" lines="0 1 1 2 2 8 3 0 4 0 4 5 5 1 5 6 6 10 7 4 8 9 8 10 9 3 9 11 10 11 11 7" material="$ConnectedMaterial$"/>
+    </Object>
+    <Object name="Components\component1:Substratte" id="4"/>
+  </Objects>
+  <Materials/>
+  <Groups>
+    <Group name="GroupOpen CASCADE STEP translator 7.9 1|Open CASCADE STEP translator 7.9 1.1 Open CASCADE STEP translator 7.9 1.1" type="Connectivity" ID="1">
+      <Item name="Components\Open CASCADE STEP translator 7.9 1/Open CASCADE STEP translator 7.9 1.1:Open CASCADE STEP translator 7.9 1.1" type="solid" id="1"/>
+      <Item name="Ports\port1" type="solid" id="2"/>
+    </Group>
+    <Group name="GroupOpen CASCADE STEP translator 7.9 1|Open CASCADE STEP translator 7.9 1.2 Open CASCADE STEP translator 7.9 1.2" type="Connectivity" ID="1">
+      <Item name="Components\Open CASCADE STEP translator 7.9 1/Open CASCADE STEP translator 7.9 1.2:Open CASCADE STEP translator 7.9 1.2" type="solid" id="3"/>
+      <Item name="Ports\port1" type="solid" id="2"/>
+    </Group>
+    <Group name="Isolators" type="Isolator" ID="1">
+      <Item name="Components\component1:Substratte" type="solid" id="4"/>
+    </Group>
+  </Groups>
+</CSTAuxiliaryGeometry>
