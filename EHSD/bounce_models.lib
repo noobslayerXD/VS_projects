@@ -1,0 +1,16 @@
+* bounce_models.lib - subcircuits for the GND/VCC bounce model (LTspice)
+*
+* DRV: linear driver model. Pull-up and pull-down are resistors controlled by IN (0..1 V).
+*   x = ACT*V(IN) ; G_up = EN*x/RON ; G_dn = EN*(1-x)/RON ; plus 1/ROFF leakage on both.
+*   EN=0  -> output disabled (Hi-Z), EN=1 ACT=0 -> output held low (quiet line),
+*   EN=1 ACT=1 -> output follows IN with Thevenin resistance RON and a linear ramp.
+*   Supply current (incl. crowbar current during the edge) flows through VCCD / GNDD.
+.subckt DRV VCCD GNDD IN OUT EN=1 ACT=1 RON=11 ROFF=1Meg
+BUP VCCD OUT I=V(VCCD,OUT)*({EN*ACT/RON}*V(IN)+{1/ROFF})
+BDN OUT GNDD I=V(OUT,GNDD)*({EN/RON}-{EN*ACT/RON}*V(IN)+{1/ROFF})
+.ends DRV
+*
+* TL: lossless transmission line, both ends referenced to board GND (node 0)
+.subckt TL A B ZL=50 TDL=600p
+T1 A 0 B 0 Zo={ZL} Td={TDL}
+.ends TL
