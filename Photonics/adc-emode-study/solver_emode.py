@@ -1,21 +1,51 @@
 """
 EMode2D backend. This is the only file that talks to EMode.
 
-It uses three kinds of EMode2D calculation, all finite-difference mode (FDM) solves
-of a 2D cross-section:
+Every call here is an EMode2D function (no EME, no FEM, nothing that needs an
+EMode3D licence). Two kinds of finite-difference mode (FDM) solve are used:
 
     modes()      straight cross-section with one or two silicon strips
-    bend_loss()  one strip in a bend (cylindrical bend solver + PML)
+    bend_loss()  one strip in a bend (cylindrical bend solver with a PML)
 
-EMode function calls follow the EMode documentation (docs.emodephotonix.com):
-settings(), shape(), reset(), FDM(), get(), close(). All lengths are in nm.
+The calls follow the EMode documentation, checked page by page (version 1.0.8):
 
-NOTE: this file was written from the documentation and has not been run against
-a licensed EMode installation. If a call fails, compare it with the 'Basic: SOI',
-'Bend Mode Solvers' and 'Straight Waveguide Convergence' examples in the docs.
-Run `python adc_study.py --backend emode --steps check` first: it does one
-single-waveguide solve and prints the result.
+  Python interface    EMode(simulation_name=..., license_type='2d', save_path=...)
+  Simulation setup    settings(), shape(), reset(kind='all')
+  Solver analysis     FDM(verbose=False), refractive_index()
+  File management     get('effective_index' | 'TE_fraction' | 'loss_dB_per_m' |
+                      'BC' | 'PML_indices' | 'emode_version'), close()
+  Examples            'Straight Waveguide Convergence' (straight solves, '00' walls),
+                      'Bend Mode Solvers', 'Bending: SiN' and 'Ring Resonator Design'
+                      (bends), 'Scattering loss: Laser' (MaterialProperties)
+
+Conventions taken from the docs
+-------------------------------
+- All lengths are in nm.
+- The origin is at the horizontal centre of the bottom wall: x runs from
+  -window_width/2 to +window_width/2 and y from 0 to window_height. A shape's
+  `position` is its centre. Giving y explicitly stops EMode stacking the shape
+  as a substrate, so each silicon strip floats in the oxide background.
+- The window is grown by EMode to a whole, even number of cells (extra cells at
+  the top). Here the window is rounded up beforehand, so the geometry is exactly
+  what is asked for and the core sits on the mirror plane needed by the 'TE' fold.
+- Since 1.0.8 the defaults are boundary_condition='auto' and resolution='auto'
+  (the solver may grow the window or add PML by itself). Both are set explicitly
+  here, so the mesh and window convergence checks in adc_study.py control them.
+- Settings stay on the profile between solves. reset(kind='all') returns the
+  profile to its defaults and removes the shapes, so no setting from a bend solve
+  (PML, bend radius, eigen-solver shift) leaks into the next straight solve.
+- In a bend, bend_radius is measured at the window centre (x = 0), and the
+  effective index and loss_dB_per_m are referenced to that radius. bend_loss()
+  rescales both to the radius of the core.
+
+Status: checked against the documentation and the official examples, but not yet
+run against a licensed EMode installation. Run
+    python adc_study.py --backend emode --steps check
+first: it does one single-waveguide solve and prints the result and the
+boundary condition EMode actually used.
 """
+import math
+
 import numpy as np
 import emodeconnection as emc
 
@@ -24,29 +54,64 @@ class EModeSolver:
     name = "emode"
 
     def __init__(self, resolution=10, h_si=220, side_margin=1500, vert_margin=1000,
-                 core="Si", clad="SiO2", simulation_name="adc_study"):
+                 core="Si", clad="SiO2", simulation_name="adc_study", save_path=".",
+                 license_type="2d", verbose=False):
         self.resolution = resolution      # nm, grid step in x and y
         self.h_si = h_si                  # nm, silicon thickness
         self.side_margin = side_margin    # nm, cladding left/right of the outermost core
         self.vert_margin = vert_margin    # nm, cladding above/below the silicon
         self.core, self.clad = core, clad # names from EMode's material database
-        self.fixed_indices = None         # not used: EMode takes indices from its database
-        self.simulation_name = simulation_name
-        self.em = emc.EMode(simulation_name=simulation_name)
+        self.fixed_indices = None         # (n_core, n_clad): constant indices instead of the database
+        self.verbose = verbose            # True prints EMode's own output for every solve
+        # Bend solver (values from the 'Bend Mode Solvers' and 'Ring Resonator Design' examples)
+        self.pml_side = 1500              # nm, PML on the outer (east) wall of the bend
+        self.pml_vertical = 1000          # nm, PML on the top and bottom walls of the bend
+        self.caustic_clearance = 500      # nm, oxide between the radiation caustic and the PML
+        self.last = {}                    # details of the last solve, for checking
+        # license_type='2d' checks out the EMode2D licence directly ('default' tries 3D first).
+        self.em = emc.EMode(simulation_name=simulation_name, save_path=save_path,
+                            license_type=license_type)
 
     # ------------------------------------------------------------------ helpers
-    def _clear_shapes(self):
-        """Remove all shapes so the next cross-section starts empty."""
+    def _even(self, length):
+        """Round a window length up to a whole, even number of grid cells."""
+        cells = 2 * math.ceil(length / (2 * self.resolution) - 1e-9)
+        return cells * self.resolution
+
+    def _snap(self, length):
+        """Round a length up to a whole number of grid cells."""
+        return self.resolution * math.ceil(length / self.resolution - 1e-9)
+
+    def _materials(self):
+        """Core and cladding materials: database names, or constant indices."""
+        if self.fixed_indices:
+            n_core, n_clad = self.fixed_indices
+            return emc.MaterialProperties(n=n_core), emc.MaterialProperties(n=n_clad)
+        return self.core, self.clad
+
+    def _clad_index(self, wavelength):
+        """Cladding index, used only to place the bend window past the radiation caustic."""
+        if self.fixed_indices:
+            return float(self.fixed_indices[1])
         try:
-            self.em.reset(kind="shapes")
+            return float(np.real(np.ravel(self.em.refractive_index(
+                material=self.clad, wavelength=wavelength))[0]))
         except Exception:
-            # Older EMode versions may not have reset(): restart the session instead.
-            self.em.close()
-            self.em = emc.EMode(simulation_name=self.simulation_name)
+            return 1.444                                  # SiO2 near 1550 nm
 
     def _read(self, key):
         """Read a per-mode result from EMode as a 1D real numpy array."""
         return np.real(np.atleast_1d(np.asarray(self.em.get(key)))).astype(float).ravel()
+
+    def _read_optional(self, key, default=None):
+        try:
+            return self.em.get(key)
+        except Exception:
+            return default
+
+    def _te_fraction(self):
+        te = self._read("TE_fraction")                    # documented as a fraction (0..1)
+        return te / 100.0 if te.size and te.max() > 1.5 else te
 
     # ---------------------------------------------------------------- interface
     def modes(self, cores, wavelength, num_modes=8):
@@ -56,66 +121,128 @@ class EModeSolver:
         wavelength : nm
         Returns (n_eff, TE_fraction) as arrays sorted by decreasing n_eff.
         """
-        em = self.em
+        em, res = self.em, self.resolution
         x_min = min(c - w / 2 for c, w in cores)
         x_max = max(c + w / 2 for c, w in cores)
-        shift = -(x_min + x_max) / 2                      # centre the structure in the window
-        window_width = (x_max - x_min) + 2 * self.side_margin
-        window_height = self.h_si + 2 * self.vert_margin
+        # Centre the structure on x = 0. The shift is a whole number of cells, so
+        # walls that lie on the grid in the caller's coordinates stay on the grid.
+        shift = -res * round((x_min + x_max) / 2 / res)
+        half = max(abs(x_min + shift), abs(x_max + shift)) + self._snap(self.side_margin)
+        window_width = self._even(2 * half)
+        window_height = self._even(self.h_si + 2 * self._snap(self.vert_margin))
+        core_mat, clad_mat = self._materials()
 
-        self._clear_shapes()
+        em.reset(kind="all")
         em.settings(
             wavelength=wavelength,
-            x_resolution=self.resolution, y_resolution=self.resolution,
+            x_resolution=res, y_resolution=res,
             window_width=window_width, window_height=window_height,
             num_modes=num_modes,
-            boundary_condition="00",                      # metal walls, full window (no symmetry)
-            background_material=self.clad,                # oxide below, beside and above the silicon
-            bend_radius=0, pml_NSEW_bool=[0, 0, 0, 0], max_effective_index=0)
+            # Metal walls on all four sides, full window. No symmetry fold: the
+            # asymmetric coupler has no vertical mirror plane, and the TM modes are
+            # needed for the TM benchmark. Setting it also switches off 'auto'.
+            boundary_condition="00",
+            background_material=clad_mat,                 # oxide below, beside and above the silicon
+            max_effective_index=0)                        # 0: highest index in the window
         for i, (c, w) in enumerate(cores):
-            em.shape(name=f"core{i}", material=self.core, width=w, height=self.h_si,
+            em.shape(name=f"core{i}", material=core_mat, width=w, height=self.h_si,
                      position=[c + shift, window_height / 2])
-        em.FDM()
+        em.FDM(verbose=self.verbose)
 
         neff = self._read("effective_index")
-        te = self._read("TE_fraction")
-        if te.max() > 1.5:                                # in case it is reported in percent
-            te = te / 100.0
+        te = self._te_fraction()
+        self.last = dict(kind="straight", window_width=window_width, window_height=window_height,
+                         boundary_condition=self._read_optional("BC"), modes_found=len(neff))
         order = np.argsort(-neff)
         return neff[order], te[order]
 
     def bend_loss(self, width, radius, wavelength, n_guess=None):
-        """Fundamental TE mode of one strip in a bend of the given radius.
+        """Fundamental TE mode of one strip bent to `radius` (nm, at the core centre).
 
-        Follows the 'Bend Mode Solvers' example: the centre of curvature is on the
-        west side, so the field leaks east. PMLs sit on the north, south and east
-        walls, and the core is shifted west to leave room for the leaking field.
-        Returns (n_eff, loss_dB_per_m).
+        Set up as in the 'Ring Resonator Design' and 'Bend Mode Solvers' examples:
+          - the centre of curvature is to the west, so the bend radiates east;
+          - the core is moved x_off to the west of the window centre and
+            bend_radius = radius + x_off, so the radius is measured at the core;
+          - the window reaches past the radiation caustic, about
+            radius * (n_eff / n_clad - 1) outside the core, before the east PML;
+          - PMLs on the north, south and east walls, with pml_kappa_max = 1;
+          - boundary_condition 'TE' folds the window about its horizontal mirror plane.
+
+        Returns (n_eff, loss_dB_per_m), both referenced to the core radius, so the
+        loss of a 90 degree bend is loss_dB_per_m * (pi/2) * radius.
         """
         em = self.em
-        x_off = 500                                       # nm, core shift towards the bend centre
-        window_width = width + 2 * (self.side_margin + x_off)
-        window_height = self.h_si + 2 * self.vert_margin
-        pml = 1000                                        # nm, PML thickness
+        if n_guess is None or not np.isfinite(n_guess):   # straight-waveguide TE0 index
+            neff, te = self.modes([(0.0, float(width))], wavelength, 4)
+            n_guess = float(neff[te > 0.5][0])
 
-        self._clear_shapes()
-        em.settings(
-            wavelength=wavelength,
-            x_resolution=self.resolution, y_resolution=self.resolution,
-            window_width=window_width, window_height=window_height,
-            num_modes=1, boundary_condition="TE",
-            background_material=self.clad,
-            bend_radius=radius + x_off,                   # so the radius is measured at the core
-            pml_NSEW_bool=[1, 1, 1, 0], pml_thickness=[pml, pml, pml, 0], pml_kappa_max=1,
-            # Aim the eigen-solver just above the straight-waveguide index so it
-            # returns the guided mode and not a PML mode.
-            max_effective_index=(n_guess + 0.05) if n_guess else 0)
-        em.shape(name="core0", material=self.core, width=width, height=self.h_si,
-                 position=[-x_off, window_height / 2])
-        em.FDM()
-        neff = float(self._read("effective_index")[0])
-        loss = float(self._read("loss_dB_per_m")[0])
-        return neff, loss
+        caustic = radius * (n_guess / self._clad_index(wavelength) - 1)
+        d_west = width / 2 + self._snap(self.side_margin)
+        d_east = max(width / 2 + self._snap(self.side_margin), caustic + self.caustic_clearance)
+        d_east += self.pml_side
+        window_width = self._even(d_west + d_east)
+        x_off = window_width / 2 - d_west                 # core centre sits at x = -x_off
+        v = self._snap(self.vert_margin) + self.pml_vertical
+        window_height = self._even(self.h_si + 2 * v)
+        bend_radius = radius + x_off                      # EMode measures it at x = 0
+        if bend_radius <= window_width / 2:
+            raise ValueError("bend radius must exceed half the window width "
+                             f"({bend_radius:.0f} nm vs {window_width / 2:.0f} nm)")
+        scale = bend_radius / radius                      # window-centre -> core-centre reference
+        core_mat, clad_mat = self._materials()
+
+        def solve(seed):
+            em.reset(kind="all")
+            em.settings(
+                wavelength=wavelength,
+                x_resolution=self.resolution, y_resolution=self.resolution,
+                window_width=window_width, window_height=window_height,
+                num_modes=2, boundary_condition="TE",
+                background_material=clad_mat,
+                bend_radius=bend_radius, bend_method="cylindrical",
+                pml_NSEW_bool=[1, 1, 1, 0],
+                pml_thickness=[self.pml_vertical, self.pml_vertical, self.pml_side, 0],
+                pml_kappa_max=1,
+                # First try: eigen-solver limit just above the guided mode, referenced
+                # to the window centre as in the 'Ring Resonator Design' example (margin
+                # 0.05 rather than 0.01, since the mode moves outward in tight bends).
+                # Fallback: pml_seed_bool lets EMode take the shift from the same
+                # structure solved without PML, so no guess is needed.
+                max_effective_index=0 if seed else (n_guess + 0.05) / scale,
+                pml_seed_bool=seed)
+            em.shape(name="core0", material=core_mat, width=width, height=self.h_si,
+                     position=[-x_off, window_height / 2])
+            em.FDM(verbose=self.verbose)
+            neff = self._read("effective_index")
+            pml = set(np.atleast_1d(self._read_optional("PML_indices", [])).astype(int).tolist())
+            te = self._te_fraction()
+            ok = [i for i in range(len(neff)) if i not in pml and te[i] > 0.5]
+            return neff, te, pml, ok
+
+        try:
+            neff, te, pml_modes, ok = solve(seed=False)
+        except Exception:
+            ok = []
+        seeded = not ok
+        if seeded:
+            neff, te, pml_modes, ok = solve(seed=True)
+        loss = self._read("loss_dB_per_m")
+        self.last = dict(kind="bend", window_width=window_width, window_height=window_height,
+                         x_off=x_off, bend_radius_setting=bend_radius, caustic_nm=caustic,
+                         boundary_condition=self._read_optional("BC"), modes_found=len(neff),
+                         pml_modes=sorted(pml_modes), pml_seeded=seeded)
+        if not ok:
+            raise RuntimeError(f"no guided TE mode found in the bend (W = {width}, R = {radius})")
+        i = max(ok, key=lambda k: neff[k])
+        if loss[i] < 0:
+            print(f"  warning: negative loss {loss[i]:.3g} dB/m (PML truncation error) "
+                  f"for W = {width}, R = {radius}")
+        return float(neff[i] * scale), float(loss[i] * scale)
+
+    def describe(self):
+        """One line on the EMode session and the last solve, for the 'check' step."""
+        version = self._read_optional("emode_version", "unknown")
+        return f"EMode version {version}; last solve: {self.last}"
 
     def close(self):
-        self.em.close()
+        self.em.close()                                   # saves <simulation_name>.eph in save_path

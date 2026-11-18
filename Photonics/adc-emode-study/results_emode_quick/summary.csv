@@ -1,0 +1,7 @@
+coupler,access_width_nm,bus_width_nm,coupling_length_um,kappa_per_um,sensitivity_mismatch_per_nm,tolerance_nm,tolerance_is_lower_bound,tolerance_first_order_nm,worst_residual_c_band_dB
+TE0-TE1,320,697.4,7.09,0.2214,0.00195,7.50,False,10.00,-17.1
+TE0-TE1,400,840.8,19.68,0.0798,0.00143,4.25,False,4.75,-16.5
+TE0-TE1,480,994.8,44.55,0.0353,0.00086,3.00,False,3.50,-16.9
+TE0-TE2,320,1070.4,8.48,0.1851,0.00269,5.00,False,6.00,-15.4
+TE0-TE2,400,1279.4,23.89,0.0657,0.00190,2.75,False,3.00,-15.5
+TE0-TE2,480,1508.2,53.74,0.0292,0.00116,2.00,False,2.00,-16.0

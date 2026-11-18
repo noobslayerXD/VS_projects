@@ -192,6 +192,8 @@ class Study:
         for n, f in zip(neff, te):
             print(f"   n_eff = {n:.4f}   TE fraction = {f:.2f}")
         print("Expected: a TE0 mode with n_eff near 2.2 and TE fraction near 1, then a TM0 mode near 1.7.")
+        if hasattr(self.s, "describe"):
+            print(self.s.describe())
 
     def step_sweep(self):
         """Isolated strips: n_eff of TE0, TE1, TE2 against width, and the slopes dn/dW."""
@@ -324,7 +326,7 @@ class Study:
         for wa in cfg["access_widths"]:
             n0 = self.n_iso(wa, wl)
             for r in cfg["bend_radii"]:
-                key = f"bend|{self.s.resolution}|{wl}|{wa}|{r}"
+                key = f"bend2|{self.s.resolution}|{wl}|{wa}|{r}"   # bend2: loss referenced to the core radius
                 if key not in self.cache:
                     try:
                         self.cache[key] = list(self.s.bend_loss(wa, r, wl, n_guess=n0))
@@ -332,7 +334,7 @@ class Study:
                         print(f"  bend solve failed for W_a = {wa}, R = {r}: {err}")
                         self.cache[key] = [float("nan"), float("nan")]
                 neff, loss = self.cache[key]
-                per90 = loss * (math.pi / 2) * r * 1e-9            # dB/m times the arc length in m
+                per90 = loss * (math.pi / 2) * r * 1e-9            # dB/m (at the core) times the arc length in m
                 out.append(dict(wa=wa, radius=r, neff=neff, loss_dB_per_m=loss, loss_dB_per_90deg=per90))
                 print(f"  W_a = {wa:4.0f} nm, R = {r / 1e3:4.1f} um:  {loss:10.3g} dB/m  = {per90:9.3g} dB per 90 deg")
         self.res["bend"] = out
@@ -374,7 +376,7 @@ class Study:
         saved = (self.s.side_margin, self.s.vert_margin, self.s.fixed_indices,
                  cfg["modes_single"], cfg["modes_coupled"])
         self.s.side_margin, self.s.vert_margin = 2000, 1500        # TM modes reach further out
-        self.s.fixed_indices = (p["n_si"], p["n_sio2"])            # only the open-source solver uses this
+        self.s.fixed_indices = (p["n_si"], p["n_sio2"])            # the paper's constant indices (both backends)
         cfg["modes_single"], cfg["modes_coupled"] = 12, 14
         try:
             n_a = self.n_iso(p["access"], p["wavelength"], 0, "TM")
@@ -454,9 +456,10 @@ def main():
         import plots
         plots.make_all(json.load(open(os.path.join(outdir, "results.json"))), cfg, outdir, args.backend)
         return
+    os.makedirs(outdir, exist_ok=True)
     if args.backend == "emode":
         from solver_emode import EModeSolver
-        solver = EModeSolver(resolution=cfg["resolution"])
+        solver = EModeSolver(resolution=cfg["resolution"], save_path=outdir)   # adc_study.eph goes there
     else:
         from solver_empy import EMpySolver
         solver = EMpySolver(resolution=cfg["resolution"])
