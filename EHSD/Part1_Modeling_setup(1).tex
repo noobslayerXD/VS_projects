@@ -1,0 +1,109 @@
+\section{Modeling setup} \label{sec:ModelingSetup}
+The board uses standard transmission lines with an impedance of $Z_0=50\,\Omega$ and a time delay of $T_D=600\,\mathrm{ps}$. The output impedance is assumed to be $11\,\Omega$, thus a series resistor of $39\,\Omega$ is added to match the output of the buffers with the transmission lines.
+% TODO (own words): the 39 Ohm resistors are already on the PCB (not added), and both 11 Ohm and 39 Ohm are given in the assignment.
+% TODO (own words): the monitor line has no 39 Ohm resistor in the model (it goes through the line straight to the 50 Ohm scope), so this only applies to the active lines.
+
+
+\subsection{Draw models} \label{subsec:models}
+The model that we need to draw has to include all the parasitics of the pins of the ICs. Each pin has both a series resistance and inductance that need to be accounted for, but also two parallel capacitors to GND, one on the pin side and one on the die side. Lastly we need to have the internal capacitances taken into account. These consist of the capacitance to the die VCC and GND. On the other end of the transmission line we assume that there is a capacitance on the input pins of the receiving buffer. The internal part of the driver is modeled as two resistors controlled by the input clock. For the passive line it is either on or off.
+% TODO (own words): add C_die (20 pF between VCC_DIE and GND_DIE): what it is, that it is not in IBIS/datasheet/SPICE model, and that it is estimated.
+% TODO (own words): say that all eight drivers share VCC_DIE and GND_DIE, and that the VCC/GND pin inductances sit between those rails and the board.
+% TODO (own words): driver details: R_on = 11 Ohm, linear change during the 500 ps edge, disabled lines have both resistors at R_off.
+% TODO (own words): the monitor line ends in the 50 Ohm scope input, not a receiver.
+% TODO (own words): "on or off" -> the monitor line is held high (VCC_DIE) or low (GND_DIE). Also pick one name for the 8th line (passive/monitored/monitor).
+
+The passive line is modeled in Figure~\ref{fig:monLine}, and the first active line is modeled in Figure~\ref{fig:ActLine}.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{MonitorLine.png}
+    \caption{The monitored line is modeled with all the parameters needed to simulate it, without values.}
+    \label{fig:monLine}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=\linewidth]{ActiveLineModel.png}
+    \caption{The active line L1 is modeled with all the parameters needed to simulate it, without values.}
+    \label{fig:ActLine}
+\end{figure}
+
+\subsection{Estimate parameters} \label{subsec:parameters}
+All the parameters that need to be estimated are either found in the datasheet or the IBIS file for the SN74ALVC244, since all other values are given, or are in the schematic.
+% TODO (own words): not everything is from the datasheet/IBIS: Z0, TD, 11 Ohm and 39 Ohm are from the assignment, R_off is assumed, C_die is estimated.
+% TODO: Table~\ref{tab:sim_package} is never referenced in the text.
+
+The value from the schematic that is used is the decoupling capacitor, which is set to $C_{dec}=100\,\mathrm{nF}$. Here we don't take the capacitor's parasitics into account. The die capacitance is common for both packages since the die is the same. This capacitance is $C_{comp,out}=6.04\,\mathrm{pF}$. Here it is important to note that this is to both lines next to the given line, so the values of $C_{up}$ and $C_{dn}$ are half of $C_{comp,out}$, so $C_{up}=C_{dn}=C_{comp,out}/2=3.02\,\mathrm{pF}$. The off resistance of the buffer is assumed to be $R_{off}=1\,\mathrm{M}\Omega$.
+% TODO (own words): C_comp is the capacitance at each output pad, not "the die capacitance" (that is C_die).
+% TODO (own words): C_up/C_dn go from the output pad to the die rails VCC_DIE and GND_DIE, not to the neighbouring lines; the 50/50 split is an assumption.
+% TODO (own words): one sentence on what R_off represents and why its exact value doesn't matter.
+
+The receiver capacitance for all the active lines is defined as the $C_{comp,in}=4.21\,\mathrm{pF}$ value that is constant for both the SOIC and the QFN packages, plus the $C_{pin}$ value for each pin on the receiver.
+% TODO (own words): name the receiver pins (A inputs: pins 2, 4, 6, 8, 11, 13, 15 on Q2/Q4), give the C_rx values, and say that the receiver pin L and R are ignored.
+
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline
+        & & \multicolumn{3}{c|}{\textbf{QFN (RGY)}} & \multicolumn{3}{c|}{\textbf{SOIC (DW)}} \\
+        \hline
+        \textbf{Pin} & \textbf{Signal} & $R$ (m$\Omega$) & $L$ (nH) & $C$ (pF) & $R$ (m$\Omega$) & $L$ (nH) & $C$ (pF) \\
+        \hline
+        20 & VCC & 91.31 & 1.3037 & 0.12549 & 42 & 6.308 & 0.864 \\
+        10 & GND & 45.79 & 1.00272 & 0.15399 & 43 & 6.349 & 0.866 \\
+        3 & 2Y4 & 101.96 & 1.47947 & 0.14411 & 34 & 4.714 & 0.732 \\
+        5 & 2Y3 & 93.15 & 1.34070 & 0.12663 & 36 & 4.130 & 0.533 \\
+        18 & 1Y1 & 97.27 & 1.39536 & 0.13843 & 34 & 4.714 & 0.731 \\
+        16 & 1Y2 & 93.36 & 1.33430 & 0.12780 & 36 & 4.130 & 0.533 \\
+        14 & 1Y3 & 100.13 & 1.44133 & 0.14031 & 35 & 4.414 & 0.596 \\
+        12 & 1Y4 & 118.19 & 1.73153 & 0.15918 & 45 & 5.561 & 0.868 \\
+        9 & 2Y1 & 110.53 & 1.61643 & 0.15073 & 40 & 5.518 & 0.865 \\
+        7 & 2Y2 & 95.98 & 1.38423 & 0.13711 & 34 & 4.284 & 0.583 \\
+        \hline
+    \end{tabular}
+    \caption{Package parasitics per pin from the IBIS file (components ALVC244\_RGY and ALVC244\_DW). Each $C_{pin}$ is split as $C_{pin}/2$ at the die side and $C_{pin}/2$ at the board side; for the GND pin only the die-side half is used.}
+    \label{tab:sim_package}
+\end{table}
+
+
+
+
+\subsection{Noise margins} \label{subsec:noise-margins}
+
+\[ V_{CC,\mathrm{nom}}=3.3\,\mathrm{V} \qquad |I_O| \leq 12\,\mathrm{mA} \]
+% TODO (own words): say where |I_O| <= 12 mA comes from (e.g. Lab 1), and why V_OL uses the 2.7 V row while V_OH uses 3.0 V
+% (the datasheet has no 12 mA V_OL value at 3.0 V, only 0.55 V at 24 mA, so the 2.7 V value is a safe worst case).
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{ccc}
+         \hline
+         Parameters & Values & Datasheet conditions\\
+         \hline
+         $V_{OH,\min}$ & $2.4\,\mathrm{V}$ & $V_{CC}=3.0\,\mathrm{V}$, $I_{OH}=-12\,\mathrm{mA}$ \\
+         $V_{OL,\max}$ & $0.4\,\mathrm{V}$ & $V_{CC}=2.7\,\mathrm{V}$, $I_{OL}=+12\,\mathrm{mA}$ \\
+         $V_{IH,\min}$ & $2.0\,\mathrm{V}$ & $V_{CC}=2.7$--$3.6\,\mathrm{V}$ \\
+         $V_{IL,\max}$ & $0.8\,\mathrm{V}$ & $V_{CC}=2.7$--$3.6\,\mathrm{V}$ \\
+         \hline
+    \end{tabular}
+    \caption{SN74ALVC244 logic levels used in the noise-margin calculation.}
+    \label{tab:logic-levels}
+\end{table}
+
+The higher and lower noise margins can be calculated from the values of Table~\ref{tab:logic-levels}. The two levels are calculated in Eqs.~(\ref{eq:noise-margin-high}) and~(\ref{eq:noise-margin-low}).
+
+\begin{equation}
+NM_H=V_{OH,\min}-V_{IH,\min}=2.4\,\mathrm{V}-2.0\,\mathrm{V}=0.4\,\mathrm{V}.
+\label{eq:noise-margin-high}
+\end{equation}
+
+\begin{equation}
+NM_L=V_{IL,\max}-V_{OL,\max}=0.8\,\mathrm{V}-0.4\,\mathrm{V}=0.4\,\mathrm{V}.
+\label{eq:noise-margin-low}
+\end{equation}
+
+We compare the driver's output levels with the receiver's input thresholds. The voltage levels were obtained from the datasheet, and we used formulas to calculate the difference between them---the margins. The results yield what are known as noise margins, which in both cases amount to $0.4\,\mathrm{V}$. These margins indicate the extent to which the voltage can drop or rise due to noise while still ensuring that the receiver can reliably distinguish between zeros and ones. If voltage fluctuations exceed these margins---that is, if the voltage for a `one' drops by more than $0.4\,\mathrm{V}$, or the voltage for a `zero' rises by more than $0.4\,\mathrm{V}$ (relative to the worst-case output levels)---then correct recognition of the logic level can no longer be guaranteed.
+
+
+
