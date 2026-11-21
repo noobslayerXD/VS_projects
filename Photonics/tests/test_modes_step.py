@@ -69,8 +69,19 @@ st2 = adc_study.Study(EModeSolver(resolution=40, save_path=out), cfg, out)
 st2.step_modes()
 assert st2.n_new == 0, st2.n_new
 
+# 5b. The coupler rebuilt at the phase-matched width: an even mixture at dW = 0, and a tolerance.
+cfg["matched_errors"] = [-10, 0, 10]
+st.step_matched()
+m0 = st.res["matched"][0]
+assert abs(m0["share0"] - 0.5) <= 0.02, m0["share0"]
+assert m0["wb_pm"] < m0["wb_star"] + 1 and 0 < m0["tol"] <= 10, (m0["wb_pm"], m0["wb_star"], m0["tol"])
+assert [p["dw"] for p in m0["points"]] == [-10, 0, 10]
+print(f"matched: W* {m0['wb_star']:.1f} -> W_pm {m0['wb_pm']:.1f} nm, share {m0['share0']:.3f}, "
+      f"tolerance +/-{m0['tol']:.2f} nm (model at W* +/-{m0['tol_model']:.2f})")
+
 # 6. The figures render from the saved results.
 plots.make_all(st.res, cfg, out, "emode")
-for name in ("fig8_modes_TE0-TE1", "fig10_supermodes_width_error", "fig11_mode_checks", "fig12_tolerance_fields"):
+for name in ("fig8_modes_TE0-TE1", "fig10_supermodes_width_error", "fig11_mode_checks", "fig12_tolerance_fields",
+             "fig13_tolerance_matched"):
     assert os.path.exists(os.path.join(out, name + ".png")), name
 print("all modes-step checks passed; output in", out)

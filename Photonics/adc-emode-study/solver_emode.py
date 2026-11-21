@@ -15,9 +15,9 @@ The calls follow the EMode documentation, checked page by page (version 1.0.8):
   Solver analysis     FDM(verbose=False), refractive_index()
   File management     get('effective_index' | 'TE_fraction' | 'loss_dB_per_m' |
                       'BC' | 'PML_indices' | 'emode_version'), close()
-  Fields              get('x' | 'y' | 'Ex' | 'Ey' | 'Hx' | 'Hy'): x and y as in
-                      SiN_width_sweep.py, which reads them from EMode the same way;
-                      Hx and Hy are optional (the field keys stored in .eph files)
+  Fields              get_grid() (Grid: cell-centre x, y) and get_fields(['Ex', 'Ey',
+                      'Hx', 'Hy']) (Field: array [field, mode, x, y], field_names).
+                      Reading x, y or fields through get() is deprecated.
   Examples            'Straight Waveguide Convergence' (straight solves, '00' walls),
                       'Bend Mode Solvers', 'Bending: SiN' and 'Ring Resonator Design'
                       (bends), 'Scattering loss: Laser' (MaterialProperties)
@@ -167,23 +167,37 @@ class EModeSolver:
         Returns (n_eff, TE_fraction, fields), sorted by decreasing n_eff. `fields` holds
         x and y (1D, nm, in the caller's coordinates: the strips at their given x, the
         silicon from -h_si/2 to +h_si/2) and Ex, Ey, Hx, Hy as arrays (mode, x, y) in
-        EMode's units. Hx and Hy are left out if EMode does not return them.
-        Reads get('x'), get('y') and get('Ex' | 'Ey' | 'Hx' | 'Hy'), the calls that
-        SiN_width_sweep.py already uses with EMode.
+        EMode's units (each mode carries 1 W). Hx and Hy are left out if EMode does not
+        return them.
+        Reads get_grid() (a Grid with the cell-centre x and y) and get_fields() (a Field
+        with an array [field, mode, x, y] and its field_names). Reading x, y or the fields
+        through get() is deprecated (EMode documentation, Variable Descriptions).
         """
         neff, te, order, shift, window_height = self._straight(cores, wavelength, num_modes, frame)
-        x = self._axis(self.em.get("x")) - shift
-        y = self._axis(self.em.get("y")) - window_height / 2
+        grid = self.em.get_grid()
+        x = self._axis(self._member(grid, "x")) - shift
+        y = self._axis(self._member(grid, "y")) - window_height / 2
+        try:
+            data = self.em.get_fields(["Ex", "Ey", "Hx", "Hy"])
+        except Exception:                                 # retry without the H fields
+            data = self.em.get_fields(["Ex", "Ey"])
+        names = list(self._member(data, "field_names"))
+        stacked = np.asarray(self._member(data, "field"))   # [field, mode, x, y]
         fields, missing = dict(x=x, y=y), []
         for comp in ("Ex", "Ey", "Hx", "Hy"):
-            try:
-                fields[comp] = self._stack(self.em.get(comp), len(neff), x.size, y.size)[order]
-            except Exception as err:
-                if comp in ("Ex", "Ey"):
-                    raise RuntimeError(f"could not read {comp} from EMode: {err}") from err
+            if comp in names:
+                fields[comp] = self._stack(stacked[names.index(comp)], len(neff), x.size, y.size)[order]
+            elif comp in ("Ex", "Ey"):
+                raise RuntimeError(f"EMode returned no {comp} field (got {names})")
+            else:
                 missing.append(comp)
         self.last["fields_missing"] = missing
         return neff[order], te[order], fields
+
+    @staticmethod
+    def _member(obj, name):
+        """An attribute of an EMode result object (Grid, Field), or the same key of a dict."""
+        return getattr(obj, name) if hasattr(obj, name) else obj[name]
 
     def _straight(self, cores, wavelength, num_modes, frame=None):
         """Set up and solve one straight cross-section (see modes()).

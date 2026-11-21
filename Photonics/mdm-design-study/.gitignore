@@ -1,0 +1,9 @@
+# LaTeX build files (keep report.pdf and report.tex)
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc

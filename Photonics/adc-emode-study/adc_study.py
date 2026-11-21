@@ -28,6 +28,9 @@ that share power between the two strips. Their index difference is dn_s.
 4. Mode fields ('modes' step): the supermodes and the two strip modes are solved
    on one grid and saved, and each supermode is fitted with the two strip modes.
    That checks the two-mode picture behind step 2 directly on the fields.
+5. Phase-matched couplers ('matched' step): the fields show that W* is wider than
+   the bus width at which the supermodes are an even mixture. Each coupler is
+   rebuilt with its bus at that width and its tolerance is taken from the fields.
 
 Usage
 -----
@@ -36,9 +39,10 @@ Usage
     python adc_study.py --backend emode                   # full study
     python adc_study.py --backend empy --quick            # open-source cross-check, no EMode
     python adc_study.py --backend emode --steps modes,plots   # add the mode fields to a finished run
+    python adc_study.py --backend emode --steps matched,plots # tolerance with the bus at the phase-matched width
     python adc_study.py --backend emode --steps plots     # redraw figures from saved results
 
-Steps: check, sweep, design, tolerance, wavelength, bend, validate, modes, plots.
+Steps: check, sweep, design, tolerance, wavelength, bend, validate, modes, matched, plots.
 Results go to results_<backend>/ next to this script (or --out). Solved
 cross-sections are cached in its cache.json, so a rerun only solves what is new.
 Delete that file to force new solves. Saved mode fields (modes/*.npz) are reused
@@ -77,6 +81,7 @@ CFG = dict(
     couplers=[1, 2],                      # 1: TE0-TE1, 2: TE0-TE2
     mode_errors=[-10, 0, 10],             # width errors dW whose mode fields are saved ('modes' step)
     mode_crop=600,                        # cladding kept around the strips in the saved fields
+    matched_errors=[-10, -5, 0, 5, 10],   # width errors for the couplers rebuilt at the phase-matched width
 )
 QUICK = dict(                             # coarse settings for a first look
     access_widths=[320, 400, 480], width_errors=[-10, 0, 10],
@@ -496,7 +501,8 @@ class Study:
         return [i for i in range(len(neff)) if neff[i] > N_GUIDED and te[i] > 0.5]
 
     def _solve_mode_set(self, d, dw, cores, key, path, tag):
-        """Solve a coupler and its two strips on one grid, check the fields, save them."""
+        """Solve a coupler and its two strips on one grid, check the fields, and save
+        them to `path` (no file if path is None). Returns the checks (meta)."""
         s, cfg, wl, m = self.s, self.cfg, self.cfg["wavelength"], d["m"]
         nc, tc, fc = s.mode_fields(cores, wl, cfg["modes_coupled"])
         na, ta, fa = s.mode_fields(cores[:1], wl, cfg["modes_single"], frame=cores)
@@ -543,10 +549,95 @@ class Study:
                     tail_dB=modefields.level_dB(acc, x, y, x_bus - w_bus / 2),
                     edge_fraction=max(modefields.edge_fraction(f, x, y, w) for f in out.values()),
                     imaginary_fraction=max(modefields.imaginary_fraction(f, w) for f in out.values()))
-        c = cfg["mode_crop"]
-        xlim = (min(cc - cw / 2 for cc, cw in cores) - c, max(cc + cw / 2 for cc, cw in cores) + c)
-        modefields.save(path, x, y, out, meta, xlim, (-s.h_si / 2 - c, s.h_si / 2 + c))
+        if path is not None:
+            c = cfg["mode_crop"]
+            xlim = (min(cc - cw / 2 for cc, cw in cores) - c, max(cc + cw / 2 for cc, cw in cores) + c)
+            modefields.save(path, x, y, out, meta, xlim, (-s.h_si / 2 - c, s.h_si / 2 + c))
         return meta
+
+    # ------------------------------------------------- bus at the phase-matched width
+    def _matched_set(self, d, wb, dw):
+        """Checks of one coupler with its bus at width wb (nominal), under width error dw.
+        Cached in cache.json, without fields."""
+        gap, wl = self.cfg["gap"], self.cfg["wavelength"]
+        cores = [(0.0, d["wa"] + dw), (d["wa"] / 2 + gap + wb / 2, wb + dw)]
+        s = self.s
+        key = "set|" + "|".join(str(v) for v in (
+            s.name, s.resolution, s.side_margin, s.vert_margin, s.h_si, wl, s.fixed_indices,
+            ";".join(f"{c:.2f},{w:.2f}" for c, w in cores)))
+        if key not in self.cache:
+            self.cache[key] = self._solve_mode_set(d, dw, cores, key, None, f"matched TE0-TE{d['m']}")
+        return self.cache[key]
+
+    def step_matched(self):
+        """Tolerance of each coupler rebuilt with its bus at the phase-matched width.
+
+        The 'modes' step shows that W*, the anticrossing minimum, is wider than the bus
+        width at which the supermodes are an even mixture. Here each coupler is rebuilt
+        with its bus at that width, W_pm, and its tolerance is taken from the fields:
+          1. W_pm from the 'modes' step, checked with one solve and corrected (at most
+             twice) until the upper supermode's access share is 0.5 +/- 0.02;
+          2. for each dW in cfg['matched_errors'] (access W_a + dW, bus W_pm + dW,
+             gap g - dW, centre lines fixed) the coupler and its two strips are solved;
+             the access share s gives dn_det = (1 - 2 s) dn_s and
+             dn_min = 2 sqrt(s (1 - s)) dn_s;
+          3. the coupler length is L_pm = lambda / (2 dn_s) at dW = 0, and with quadratic
+             fits of dn_min and dn_det over dW the converted power is the tolerance
+             step's eta(dn_min, dn_det, L_pm);
+          4. tolerance = largest |dW| for which 1 - eta stays below the limit.
+        """
+        cfg, wl = self.cfg, self.cfg["wavelength"]
+        if not hasattr(self.s, "mode_fields"):
+            print("\n[matched] skipped: this solver does not return fields")
+            return
+        if "modes" not in self.res:
+            self.step_modes()
+        even = {(r["m"], r["wa"]): r["wb_even_fields"] for r in self.res["modes"] if r["dw"] == 0}
+        errors = sorted(float(e) for e in cfg["matched_errors"])
+        if 0.0 not in errors:
+            errors = sorted(errors + [0.0])
+        fine = np.arange(errors[0], errors[-1] + 0.01, 0.25)
+        tol_w = {(t["m"], t["wa"]): t["tol"] for t in self.res.get("tolerance", [])}
+        print(f"\n[matched] bus at the phase-matched width; width errors {errors} nm")
+        print("  coupler  W_a    W*      W_pm   share   L_c(W*)  L_pm(um)  tolerance: model at W*  fields at W_pm")
+        out = []
+        for d in self._designs():
+            wb = even.get((d["m"], d["wa"]), d["wb_iso"])
+            for _ in range(3):                            # check, and correct at most twice
+                meta = self._matched_set(d, wb, 0.0)
+                s0 = meta["checks"]["upper"]["share"]
+                if abs(s0 - 0.5) <= 0.02:
+                    break
+                wb -= (1 - 2 * s0) * meta["dn_s"] / d["s_b"]
+            pts = []
+            for dw in errors:
+                meta = self._matched_set(d, wb, dw)
+                s, dn_s = meta["checks"]["upper"]["share"], meta["dn_s"]
+                pts.append(dict(dw=dw, share=s, dn_s=dn_s, dn_det=(1 - 2 * s) * dn_s,
+                                dn_min=2 * math.sqrt(s * (1 - s)) * dn_s,
+                                residual=max(meta["checks"]["upper"]["residual"],
+                                             meta["checks"]["lower"]["residual"])))
+            p0 = next(p for p in pts if p["dw"] == 0)
+            L_pm = wl / (2 * p0["dn_s"])
+            for p in pts:
+                p["eta"] = float(conversion(p["dn_min"], p["dn_det"], L_pm, wl))
+            deg = min(2, len(errors) - 1)
+            dn_min_f = np.polyval(np.polyfit(errors, [p["dn_min"] for p in pts], deg), fine)
+            dn_det_f = np.polyval(np.polyfit(errors, [p["dn_det"] for p in pts], deg), fine)
+            residual = to_dB(1 - conversion(dn_min_f, dn_det_f, L_pm, wl))
+            tol = symmetric_tolerance(fine, residual, cfg["residual_limit_dB"])
+            out.append(dict(m=d["m"], wa=d["wa"], wb_star=d["wb_star"], wb_iso=d["wb_iso"], wb_pm=float(wb),
+                            share0=p0["share"], Lc_star=d["Lc"], Lc_pm=float(L_pm), points=pts,
+                            dw=fine.tolist(), residual_dB=residual.tolist(), tol=tol,
+                            tol_is_lower_bound=bool(tol >= min(-errors[0], errors[-1]) - 1e-9),
+                            tol_model=tol_w.get((d["m"], d["wa"]), float("nan"))))
+            r = out[-1]
+            print(f"  TE0-TE{d['m']}  {d['wa']:4.0f}  {d['wb_star']:7.1f}  {wb:7.1f}  {p0['share']:5.3f}"
+                  f"  {d['Lc'] / 1e3:7.2f}  {L_pm / 1e3:7.2f}        +/-{r['tol_model']:4.2f}"
+                  f"          +/-{tol:4.2f}")
+            self.save()                                   # keep the solved sets if a later one fails
+        self.res["matched"] = out
+        self.save()
 
     def _model_at(self, t, dw):
         """dn_min and dn_det of the tolerance step's two-mode model at width error dw."""
@@ -672,21 +763,28 @@ class Study:
         if not {"design", "tolerance"} <= set(self.res):
             return
         wav = {(w["m"], w["wa"]): w for w in self.res.get("wavelength", [])}
+        mat = {(r["m"], r["wa"]): r for r in self.res.get("matched", [])}
         path = os.path.join(self.out, "summary.csv")
         with open(path, "w") as f:
             f.write("coupler,access_width_nm,bus_width_nm,coupling_length_um,kappa_per_um,"
                     "sensitivity_mismatch_per_nm,tolerance_nm,tolerance_is_lower_bound,"
-                    "tolerance_first_order_nm,worst_residual_c_band_dB\n")
+                    "tolerance_first_order_nm,worst_residual_c_band_dB"
+                    + (",bus_width_phase_matched_nm,coupling_length_phase_matched_um,"
+                       "tolerance_phase_matched_nm" if mat else "") + "\n")
             for d, t in zip(self._designs(), self.res["tolerance"]):
                 w = wav.get((d["m"], d["wa"]), {})
                 f.write(f"TE0-TE{d['m']},{d['wa']},{d['wb_star']:.1f},{d['Lc'] / 1e3:.2f},"
                         f"{d['kappa_per_um']:.4f},{d['s_a'] - d['s_b']:.5f},{t['tol']:.2f},"
                         f"{t['tol_is_lower_bound']},{d['tol_cmt']:.2f},"
-                        f"{w.get('worst_residual_c_band_dB', float('nan')):.1f}\n")
+                        f"{w.get('worst_residual_c_band_dB', float('nan')):.1f}")
+                if mat:
+                    r = mat.get((d["m"], d["wa"]))
+                    f.write(f",{r['wb_pm']:.1f},{r['Lc_pm'] / 1e3:.2f},{r['tol']:.2f}" if r else ",,,")
+                f.write("\n")
         print(f"\nSummary table: {path}")
 
 
-STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "modes", "plots"]
+STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "modes", "matched", "plots"]
 
 
 def main():

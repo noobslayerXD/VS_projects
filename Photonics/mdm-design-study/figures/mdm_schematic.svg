@@ -1,0 +1,157 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 560' width='1280' height='560'>
+<defs><marker id='ar' viewBox='0 0 10 10' refX='9' refY='5' markerWidth='7' markerHeight='7' orient='auto'><path d='M0,0 L10,5 L0,10 z' fill='#1A1A1A'/></marker></defs>
+<rect width='1280' height='560' fill='white'/>
+<text x='195' y='62' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#555'>TRANSMITTER</text>
+<text x='606' y='62' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>MODE MULTIPLEXER  (designed in EMode2D)</text>
+<text x='880' y='62' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#555'>LINK</text>
+<text x='1105' y='62' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#555'>RECEIVER</text>
+<rect x='392' y='78' width='428' height='300' rx='10' fill='#EAF1FB' stroke='#1F5FAD' stroke-width='1.5' stroke-dasharray='6 4'/>
+<rect x='20' y='215' width='100' height='60' rx='6' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='70' y='241' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>CW laser</text>
+<text x='70' y='259' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>λ = 1550 nm</text>
+<circle cx='30' cy='203' r='9.5' fill='white' stroke='#1A1A1A' stroke-width='1.6'/>
+<text x='30' y='207.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1A1A1A'>1</text>
+<path d='M120 245 H150' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<rect x='150' y='221' width='60' height='48' rx='3' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='180' y='242' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>1×3</text>
+<text x='180' y='258' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>MMI</text>
+<circle cx='160' cy='209' r='9.5' fill='white' stroke='#1A1A1A' stroke-width='1.6'/>
+<text x='160' y='213.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1A1A1A'>2</text>
+<path d='M210 232 C250 232 250 150 290 150' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<path d='M210 245 H290' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<path d='M210 258 C250 258 250 340 290 340' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<rect x='290' y='130' width='80' height='40' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='330' y='155' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>MZM</text>
+<line x1='330' y1='108' x2='330' y2='128' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='330' y='104' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 1</text>
+<rect x='290' y='225' width='80' height='40' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='330' y='250' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>MZM</text>
+<line x1='330' y1='203' x2='330' y2='223' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='330' y='199' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 2</text>
+<rect x='290' y='320' width='80' height='40' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='330' y='345' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>MZM</text>
+<line x1='330' y1='298' x2='330' y2='318' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='330' y='294' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 3</text>
+<circle cx='290' cy='100' r='9.5' fill='white' stroke='#1A1A1A' stroke-width='1.6'/>
+<text x='290' y='104.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1A1A1A'>3</text>
+<path d='M370 150 H395' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<path d='M370 245 H395' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<path d='M370 340 H395' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<polygon points='395,147 440,147 440,153 395,153' fill='#1F5FAD'/>
+<polygon points='440,147 470,144 470,156 440,153' fill='#1F5FAD'/>
+<polygon points='470,144 620,144 620,156 470,156' fill='#1F5FAD'/>
+<polygon points='620,144 660,141 660,159 620,156' fill='#1F5FAD'/>
+<polygon points='660,141 830,141 830,159 660,159' fill='#1F5FAD'/>
+<path d='M395 245 H400 C450 245 450 164 500 164 H600' fill='none' stroke='#1F5FAD' stroke-width='6' stroke-linecap='butt'/>
+<polygon points='600,161 612,163.4 612,164.6 600,167' fill='#1F5FAD'/>
+<path d='M395 340 H560 C620 340 620 167 680 167 H790' fill='none' stroke='#1F5FAD' stroke-width='6' stroke-linecap='butt'/>
+<polygon points='790,164 802,166.4 802,167.6 790,170' fill='#1F5FAD'/>
+<circle cx='488' cy='108' r='9.5' fill='white' stroke='#1F5FAD' stroke-width='1.6'/>
+<text x='488' y='112.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>4</text>
+<text x='550' y='112' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>ADC₁: TE₀ → TE₁</text>
+<path d='M500 137 V132 H600 V137' fill='none' stroke='#1F5FAD' stroke-width='1.2'/>
+<text x='550' y='128' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>L₁</text>
+<circle cx='668' cy='108' r='9.5' fill='white' stroke='#1F5FAD' stroke-width='1.6'/>
+<text x='668' y='112.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>5</text>
+<text x='735' y='112' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>ADC₂: TE₀ → TE₂</text>
+<path d='M680 137 V132 H790 V137' fill='none' stroke='#1F5FAD' stroke-width='1.2'/>
+<text x='735' y='128' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>L₂</text>
+<line x1='455' y1='135.5' x2='455' y2='146' stroke='#1F5FAD' stroke-width='1.2'/>
+<circle cx='455' cy='126' r='9.5' fill='white' stroke='#1F5FAD' stroke-width='1.6'/>
+<text x='455' y='130.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>6</text>
+<line x1='640' y1='135.5' x2='640' y2='142' stroke='#1F5FAD' stroke-width='1.2'/>
+<circle cx='640' cy='126' r='9.5' fill='white' stroke='#1F5FAD' stroke-width='1.6'/>
+<text x='640' y='130.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>6</text>
+<text x='418' y='140' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>W₀</text>
+<text x='485' y='139' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>W₁</text>
+<text x='806' y='136' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>W₂</text>
+<text x='606' y='368' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='italic' fill='#1F5FAD'>TE₀ input passes straight; TE₀ from lanes 2–3 is converted to TE₁ / TE₂</text>
+<rect x='830' y='126' width='100' height='48' rx='10' fill='#EEEEEE' stroke='#7A7A7A' stroke-width='1.5'/>
+<rect x='830' y='141' width='100' height='18' fill='#9BB5D9'/>
+<path d='M872 122 L866 178 M884 122 L878 178' stroke='white' stroke-width='5'/>
+<path d='M872 122 L866 178 M884 122 L878 178' stroke='#7A7A7A' stroke-width='1' />
+<polygon points='930,141 945,141 945,159 930,159' fill='#9BB5D9'/>
+<circle cx='838' cy='108' r='9.5' fill='white' stroke='#1A1A1A' stroke-width='1.6'/>
+<text x='838' y='112.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1A1A1A'>7</text>
+<text x='853' y='112' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='start' font-weight='bold' font-style='normal' fill='#1A1A1A'>3-mode link</text>
+<text x='880' y='196' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>TE₀ + TE₁ + TE₂</text>
+<text x='880' y='211' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#555'>multimode bus /</text>
+<text x='880' y='224' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#555'>few-mode fiber</text>
+<rect x='945' y='110' width='120' height='250' rx='8' fill='#EAF1FB' stroke='#1F5FAD' stroke-width='1.5'/>
+<text x='1005' y='232' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>Mode</text>
+<text x='1005' y='250' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='13' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>DEMUX</text>
+<text x='1005' y='270' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1F5FAD'>(mirror of 4–6)</text>
+<circle cx='957' cy='98' r='9.5' fill='white' stroke='#1F5FAD' stroke-width='1.6'/>
+<text x='957' y='102.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>8</text>
+<path d='M1065 150 H1110' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<text x='1087' y='141' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='middle' font-weight='normal' font-style='normal' fill='#555'>TE₀</text>
+<rect x='1110' y='132' width='56' height='36' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='1138' y='155' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>PD</text>
+<line x1='1166' y1='150' x2='1208' y2='150' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='1213' y='154' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 1</text>
+<path d='M1065 245 H1110' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<text x='1087' y='236' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='middle' font-weight='normal' font-style='normal' fill='#555'>TE₁</text>
+<rect x='1110' y='227' width='56' height='36' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='1138' y='250' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>PD</text>
+<line x1='1166' y1='245' x2='1208' y2='245' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='1213' y='249' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 2</text>
+<path d='M1065 340 H1110' fill='none' stroke='#4D4D4D' stroke-width='6' stroke-linecap='butt'/>
+<text x='1087' y='331' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='middle' font-weight='normal' font-style='normal' fill='#555'>TE₂</text>
+<rect x='1110' y='322' width='56' height='36' rx='4' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.5'/>
+<text x='1138' y='345' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>PD</text>
+<line x1='1166' y1='340' x2='1208' y2='340' stroke='#1A1A1A' stroke-width='1.3' marker-end='url(#ar)'/>
+<text x='1213' y='344' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Data 3</text>
+<circle cx='1138' cy='118' r='9.5' fill='white' stroke='#1A1A1A' stroke-width='1.6'/>
+<text x='1138' y='122.3' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1A1A1A'>9</text>
+<rect x='20' y='420' width='22' height='14' fill='#1F5FAD'/>
+<text x='50' y='432' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Designed in EMode2D (mode solver + CMT)</text>
+<rect x='20' y='444' width='22' height='14' fill='#F3F3F3' stroke='#7A7A7A' stroke-width='1.2'/>
+<text x='50' y='456' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Standard building block, treated as ideal</text>
+<text x='20' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#333'>1</text>
+<text x='31' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>CW laser</text>
+<text x='148' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#333'>2</text>
+<text x='159' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>1×3 MMI splitter</text>
+<text x='276' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#333'>3</text>
+<text x='287' y='486' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>MZM array</text>
+<text x='20' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#1F5FAD'>4</text>
+<text x='31' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>ADC₁ (TE₀→TE₁)</text>
+<text x='148' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#1F5FAD'>5</text>
+<text x='159' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>ADC₂ (TE₀→TE₂)</text>
+<text x='276' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#1F5FAD'>6</text>
+<text x='287' y='505' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>Adiabatic tapers</text>
+<text x='20' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#333'>7</text>
+<text x='31' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>3-mode link</text>
+<text x='148' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#1F5FAD'>8</text>
+<text x='159' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>Mode DEMUX</text>
+<text x='276' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='bold' font-style='normal' fill='#333'>9</text>
+<text x='287' y='524' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11' text-anchor='start' font-weight='normal' font-style='normal' fill='#333'>Photodetectors</text>
+<rect x='420' y='408' width='370' height='140' rx='8' fill='white' stroke='#BBBBBB' stroke-width='1.5'/>
+<text x='435' y='428' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' font-weight='bold' font-style='normal' fill='#1A1A1A'>ADC cross-section (220 nm SOI, SiO₂ cladding)</text>
+<rect x='435' y='438' width='340' height='72' fill='#F4F7FB'/>
+<rect x='510' y='472' width='50' height='22' fill='#1F5FAD'/>
+<rect x='580' y='472' width='120' height='22' fill='#1F5FAD'/>
+<defs><marker id='al' viewBox='0 0 10 10' refX='1' refY='5' markerWidth='6' markerHeight='6' orient='auto-start-reverse'><path d='M0,0 L10,5 L0,10 z' fill='#1A1A1A'/></marker></defs>
+<line x1='511' y1='462' x2='559' y2='462' stroke='#1A1A1A' stroke-width='1' marker-start='url(#al)' marker-end='url(#al)'/>
+<text x='535' y='457' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>W₀</text>
+<line x1='581' y1='462' x2='699' y2='462' stroke='#1A1A1A' stroke-width='1' marker-start='url(#al)' marker-end='url(#al)'/>
+<text x='640' y='457' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='normal' fill='#1A1A1A'>W₁ or W₂</text>
+<line x1='561' y1='502' x2='579' y2='502' stroke='#1A1A1A' stroke-width='1' marker-start='url(#al)' marker-end='url(#al)'/>
+<text x='570' y='517' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='middle' font-weight='normal' font-style='italic' fill='#1A1A1A'>g ≥ 200 nm</text>
+<line x1='712' y1='473' x2='712' y2='493' stroke='#1A1A1A' stroke-width='1' marker-start='url(#al)' marker-end='url(#al)'/>
+<text x='720' y='487' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>220 nm</text>
+<text x='435' y='530' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='10.5' text-anchor='start' font-weight='normal' font-style='normal' fill='#1A1A1A'>Phase matching:  n<tspan dy='3' font-size='8'>eff</tspan><tspan dy='-3'>(TE₀, W₀) = n</tspan><tspan dy='3' font-size='8'>eff</tspan><tspan dy='-3'>(TE</tspan><tspan dy='3' font-size='8'>m</tspan><tspan dy='-3'>, W</tspan><tspan dy='3' font-size='8'>m</tspan><tspan dy='-3'>)   ·   W₀ = design knob</tspan></text>
+<rect x='820' y='408' width='440' height='140' rx='8' fill='white' stroke='#BBBBBB' stroke-width='1.5'/>
+<text x='835' y='428' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='11.5' text-anchor='start' font-weight='bold' font-style='normal' fill='#1A1A1A'>Bus-waveguide modes (Eₓ across the width)</text>
+<rect x='868.0' y='475.0' width='84' height='22' fill='#DCE7F6'/>
+<line x1='850' y1='486' x2='970' y2='486' stroke='#999' stroke-width='0.8'/>
+<path d='M850.0,485.4 L851.0,485.3 L852.0,485.2 L853.0,485.1 L854.0,485.0 L855.0,484.9 L856.0,484.7 L857.0,484.6 L858.0,484.4 L859.0,484.2 L860.0,484.0 L861.0,483.7 L862.0,483.4 L863.0,483.1 L864.0,482.7 L865.0,482.3 L866.0,481.9 L867.0,481.4 L868.0,480.8 L869.0,480.0 L870.0,479.3 L871.0,478.5 L872.0,477.8 L873.0,477.1 L874.0,476.4 L875.0,475.7 L876.0,475.0 L877.0,474.3 L878.0,473.6 L879.0,473.0 L880.0,472.3 L881.0,471.7 L882.0,471.1 L883.0,470.5 L884.0,469.9 L885.0,469.3 L886.0,468.8 L887.0,468.3 L888.0,467.8 L889.0,467.3 L890.0,466.8 L891.0,466.3 L892.0,465.9 L893.0,465.5 L894.0,465.1 L895.0,464.7 L896.0,464.4 L897.0,464.1 L898.0,463.8 L899.0,463.5 L900.0,463.2 L901.0,463.0 L902.0,462.8 L903.0,462.6 L904.0,462.4 L905.0,462.3 L906.0,462.2 L907.0,462.1 L908.0,462.0 L909.0,462.0 L910.0,462.0 L911.0,462.0 L912.0,462.0 L913.0,462.1 L914.0,462.2 L915.0,462.3 L916.0,462.4 L917.0,462.6 L918.0,462.8 L919.0,463.0 L920.0,463.2 L921.0,463.5 L922.0,463.8 L923.0,464.1 L924.0,464.4 L925.0,464.7 L926.0,465.1 L927.0,465.5 L928.0,465.9 L929.0,466.3 L930.0,466.8 L931.0,467.3 L932.0,467.8 L933.0,468.3 L934.0,468.8 L935.0,469.3 L936.0,469.9 L937.0,470.5 L938.0,471.1 L939.0,471.7 L940.0,472.3 L941.0,473.0 L942.0,473.6 L943.0,474.3 L944.0,475.0 L945.0,475.7 L946.0,476.4 L947.0,477.1 L948.0,477.8 L949.0,478.5 L950.0,479.3 L951.0,480.0 L952.0,480.8 L953.0,481.4 L954.0,481.9 L955.0,482.3 L956.0,482.7 L957.0,483.1 L958.0,483.4 L959.0,483.7 L960.0,484.0 L961.0,484.2 L962.0,484.4 L963.0,484.6 L964.0,484.7 L965.0,484.9 L966.0,485.0 L967.0,485.1 L968.0,485.2 L969.0,485.3 L970.0,485.4' fill='none' stroke='#1F5FAD' stroke-width='2'/>
+<text x='910' y='534' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>TE₀</text>
+<rect x='998.0' y='475.0' width='84' height='22' fill='#DCE7F6'/>
+<line x1='980' y1='486' x2='1100' y2='486' stroke='#999' stroke-width='0.8'/>
+<path d='M980.0,487.2 L981.0,487.4 L982.0,487.5 L983.0,487.7 L984.0,487.9 L985.0,488.2 L986.0,488.4 L987.0,488.8 L988.0,489.1 L989.0,489.5 L990.0,489.9 L991.0,490.4 L992.0,491.0 L993.0,491.6 L994.0,492.3 L995.0,493.1 L996.0,494.1 L997.0,495.1 L998.0,496.2 L999.0,497.6 L1000.0,498.9 L1001.0,500.2 L1002.0,501.4 L1003.0,502.6 L1004.0,503.6 L1005.0,504.7 L1006.0,505.6 L1007.0,506.4 L1008.0,507.2 L1009.0,507.9 L1010.0,508.5 L1011.0,509.0 L1012.0,509.4 L1013.0,509.7 L1014.0,509.9 L1015.0,510.0 L1016.0,510.0 L1017.0,509.9 L1018.0,509.7 L1019.0,509.4 L1020.0,509.0 L1021.0,508.6 L1022.0,508.0 L1023.0,507.3 L1024.0,506.6 L1025.0,505.7 L1026.0,504.8 L1027.0,503.8 L1028.0,502.7 L1029.0,501.6 L1030.0,500.4 L1031.0,499.1 L1032.0,497.8 L1033.0,496.4 L1034.0,495.0 L1035.0,493.6 L1036.0,492.1 L1037.0,490.6 L1038.0,489.1 L1039.0,487.5 L1040.0,486.0 L1041.0,484.5 L1042.0,482.9 L1043.0,481.4 L1044.0,479.9 L1045.0,478.4 L1046.0,477.0 L1047.0,475.6 L1048.0,474.2 L1049.0,472.9 L1050.0,471.6 L1051.0,470.4 L1052.0,469.3 L1053.0,468.2 L1054.0,467.2 L1055.0,466.3 L1056.0,465.4 L1057.0,464.7 L1058.0,464.0 L1059.0,463.4 L1060.0,463.0 L1061.0,462.6 L1062.0,462.3 L1063.0,462.1 L1064.0,462.0 L1065.0,462.0 L1066.0,462.1 L1067.0,462.3 L1068.0,462.6 L1069.0,463.0 L1070.0,463.5 L1071.0,464.1 L1072.0,464.8 L1073.0,465.6 L1074.0,466.4 L1075.0,467.3 L1076.0,468.4 L1077.0,469.4 L1078.0,470.6 L1079.0,471.8 L1080.0,473.1 L1081.0,474.4 L1082.0,475.8 L1083.0,476.9 L1084.0,477.9 L1085.0,478.9 L1086.0,479.7 L1087.0,480.4 L1088.0,481.0 L1089.0,481.6 L1090.0,482.1 L1091.0,482.5 L1092.0,482.9 L1093.0,483.2 L1094.0,483.6 L1095.0,483.8 L1096.0,484.1 L1097.0,484.3 L1098.0,484.5 L1099.0,484.6 L1100.0,484.8' fill='none' stroke='#1F5FAD' stroke-width='2'/>
+<text x='1040' y='534' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>TE₁</text>
+<rect x='1128.0' y='475.0' width='84' height='22' fill='#DCE7F6'/>
+<line x1='1110' y1='486' x2='1230' y2='486' stroke='#999' stroke-width='0.8'/>
+<path d='M1110.0,487.7 L1111.0,487.9 L1112.0,488.2 L1113.0,488.5 L1114.0,488.8 L1115.0,489.1 L1116.0,489.5 L1117.0,490.0 L1118.0,490.5 L1119.0,491.0 L1120.0,491.7 L1121.0,492.4 L1122.0,493.2 L1123.0,494.1 L1124.0,495.1 L1125.0,496.3 L1126.0,497.6 L1127.0,499.1 L1128.0,500.7 L1129.0,502.5 L1130.0,504.1 L1131.0,505.5 L1132.0,506.8 L1133.0,507.8 L1134.0,508.7 L1135.0,509.3 L1136.0,509.8 L1137.0,510.0 L1138.0,510.0 L1139.0,509.7 L1140.0,509.3 L1141.0,508.6 L1142.0,507.7 L1143.0,506.6 L1144.0,505.4 L1145.0,503.9 L1146.0,502.3 L1147.0,500.5 L1148.0,498.6 L1149.0,496.6 L1150.0,494.4 L1151.0,492.2 L1152.0,490.0 L1153.0,487.7 L1154.0,485.4 L1155.0,483.0 L1156.0,480.8 L1157.0,478.5 L1158.0,476.4 L1159.0,474.3 L1160.0,472.3 L1161.0,470.5 L1162.0,468.8 L1163.0,467.3 L1164.0,465.9 L1165.0,464.7 L1166.0,463.8 L1167.0,463.0 L1168.0,462.4 L1169.0,462.1 L1170.0,462.0 L1171.0,462.1 L1172.0,462.4 L1173.0,463.0 L1174.0,463.8 L1175.0,464.7 L1176.0,465.9 L1177.0,467.3 L1178.0,468.8 L1179.0,470.5 L1180.0,472.3 L1181.0,474.3 L1182.0,476.4 L1183.0,478.5 L1184.0,480.8 L1185.0,483.0 L1186.0,485.4 L1187.0,487.7 L1188.0,490.0 L1189.0,492.2 L1190.0,494.4 L1191.0,496.6 L1192.0,498.6 L1193.0,500.5 L1194.0,502.3 L1195.0,503.9 L1196.0,505.4 L1197.0,506.6 L1198.0,507.7 L1199.0,508.6 L1200.0,509.3 L1201.0,509.7 L1202.0,510.0 L1203.0,510.0 L1204.0,509.8 L1205.0,509.3 L1206.0,508.7 L1207.0,507.8 L1208.0,506.8 L1209.0,505.5 L1210.0,504.1 L1211.0,502.5 L1212.0,500.7 L1213.0,499.1 L1214.0,497.6 L1215.0,496.3 L1216.0,495.1 L1217.0,494.1 L1218.0,493.2 L1219.0,492.4 L1220.0,491.7 L1221.0,491.0 L1222.0,490.5 L1223.0,490.0 L1224.0,489.5 L1225.0,489.1 L1226.0,488.8 L1227.0,488.5 L1228.0,488.2 L1229.0,487.9 L1230.0,487.7' fill='none' stroke='#1F5FAD' stroke-width='2'/>
+<text x='1170' y='534' font-family='DejaVu Sans, Helvetica, Arial, sans-serif' font-size='12' text-anchor='middle' font-weight='bold' font-style='normal' fill='#1F5FAD'>TE₂</text>
+</svg>

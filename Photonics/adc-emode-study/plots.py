@@ -445,6 +445,37 @@ def fig_tolerance_fields(res, cfg, outdir, note):
     _save(fig, outdir, "fig12_tolerance_fields.png", note)
 
 
+def fig_tolerance_matched(res, cfg, outdir, note):
+    """Tolerance against access width: model with the bus at W*, fields with the bus at the
+    phase-matched width ('matched' step)."""
+    mat = res.get("matched", [])
+    if not mat:
+        return
+    lim = cfg["residual_limit_dB"]
+    fig, axes = plt.subplots(1, 2, figsize=(8.0, 3.4), sharey=True)
+    for ax, m in zip(axes, (1, 2)):
+        name, col = COUPLER[m]
+        sel = sorted((r for r in mat if r["m"] == m), key=lambda r: r["wa"])
+        if not sel:
+            ax.set_axis_off()
+            continue
+        wa = [r["wa"] for r in sel]
+        ax.plot(wa, [r["tol_model"] for r in sel], "o-", color=col, label="two-mode model, bus at W*")
+        ax.plot(wa, [r["tol"] for r in sel], "o", ls=(0, (4, 3)), color=col, mfc=SURFACE, mec=col,
+                label="mode fields, bus at phase-matched width")
+        ax.set_title(name)
+        ax.set_xlabel("Access width W$_a$ (nm)")
+        ax.set_ylim(bottom=0)
+    axes[0].set_ylabel(f"Width tolerance ±ΔW (nm) at {lim:.0f} dB")
+    used = [ax for ax in axes if ax.get_legend_handles_labels()[0]]
+    if used:
+        used[0].legend(loc="upper right")
+    fig.suptitle("Tolerance of the couplers rebuilt with the bus at the phase-matched width",
+                 x=0.01, ha="left", fontsize=10, fontweight="bold")
+    fig.tight_layout()
+    _save(fig, outdir, "fig13_tolerance_matched.png", note)
+
+
 def make_all(res, cfg, outdir, backend):
     note = {"emode": "EMode2D", "empy": "open-source cross-check solver (EMpy), not EMode"}.get(backend, backend)
     note = f"Solver: {note} · grid {cfg['resolution']:g} nm"
@@ -460,3 +491,5 @@ def make_all(res, cfg, outdir, backend):
         fig_supermodes_error(res, cfg, outdir, note)
         fig_mode_checks(res, cfg, outdir, note)
         fig_tolerance_fields(res, cfg, outdir, note)
+    if res.get("matched"):
+        fig_tolerance_matched(res, cfg, outdir, note)

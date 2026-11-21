@@ -13,15 +13,18 @@ Documented conventions it enforces:
   - bend_radius measured at x = 0 and larger than W/2; n_eff and loss_dB_per_m
     referenced to that radius
   - reset(kind) only 'shapes', 'settings' or 'all'; settings persist between solves
-  - after a straight solve, get('x'), get('y') give the window's grid (x centred, y from
-    the bottom wall) and get('Ex' | 'Ey' | 'Hx' | 'Hy') one array per component with the
-    modes in the same order as get('effective_index'). FIELD_LAYOUT picks (mode, x, y)
-    or (mode, y, x); GIVE_H = False leaves the H fields out. EMode's own layout and grid
-    points are not documented, so the solver must work with either.
+  - after a straight solve, get_grid() gives a Grid (x centred, y from the bottom wall,
+    cell centres) and get_fields(key) a Field: an array [field, mode, x, y] with
+    field_names, modes in the same order as get('effective_index'). FIELD_LAYOUT = "yx"
+    swaps the last two axes, to check that the solver does not depend on it; GIVE_H =
+    False makes a request for H fail. Reading x, y or a field through get() raises, as
+    those keys are deprecated in EMode.
 """
 import math
 import os
 import sys
+
+from types import SimpleNamespace
 
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
@@ -58,8 +61,10 @@ FDM_ARGS = {"profile", "section", "propagation_distance", "mode_filter", "fLancz
 BOUNDARY = {"auto", "TE", "TM", "TE-h", "TM-h", "TE-v", "TM-v"} | {a + b for a in "0SA" for b in "0SA"}
 CALLS = []                                         # log of calls, for the test script
 SHIFT = 0.05                                       # bend shift factor; the test raises it
-FIELD_LAYOUT = "xy"                                # field arrays as (mode, x, y) or "yx": (mode, y, x)
-GIVE_H = True                                      # False: get('Hx'), get('Hy') fail
+FIELD_LAYOUT = "xy"                                # Field array [field, mode, x, y] as documented, or "yx": [.., y, x]
+GIVE_H = True                                      # False: get_fields with Hx or Hy fails
+DEPRECATED = {"x", "y", "Ex", "Ey", "Ez", "Hx", "Hy", "Hz", "Sx", "Sy", "Sz"}
+GRID_ARGS = {"include_expand", "include_pml", "unfold", "profile", "simulation_name"}
 
 
 def _window_fields(f, W, H, res, y_core):
@@ -69,7 +74,7 @@ def _window_fields(f, W, H, res, y_core):
     ye = np.arange(res / 2, H, res)
     X, Y = np.meshgrid(xe, ye - y_core, indexing="ij")
     out = dict(x=xe, y=ye)
-    for comp in ("Ex", "Ey", "Hx", "Hy") if GIVE_H else ("Ex", "Ey"):
+    for comp in ("Ex", "Ey", "Hx", "Hy"):
         stack = []
         for a in f[comp][::-1]:
             part = [RegularGridInterpolator((f["x"], f["y"]), p, bounds_error=False, fill_value=0.0)((X, Y))
@@ -95,7 +100,7 @@ class EMode:
     def __init__(self, **kw):
         _check(kw, CONSTRUCTOR, "EMode")
         assert kw.get("license_type", "default") in ("2d", "3d", "default")
-        self.s, self.shapes, self.out = dict(SETTINGS_DEFAULTS), {}, {}
+        self.s, self.shapes, self.out, self.fields = dict(SETTINGS_DEFAULTS), {}, {}, {}
         CALLS.append(("EMode", kw))
 
     def settings(self, **kw):
@@ -115,7 +120,7 @@ class EMode:
         self.shapes = {}
         if kind in ("settings", "all"):
             self.s = dict(SETTINGS_DEFAULTS)
-        self.out = {}
+        self.out, self.fields = {}, {}
 
     def refractive_index(self, material, wavelength=1550, reference=False):
         n = material.n if isinstance(material, MaterialProperties) else {"SiO2": float(n_sio2(wavelength))}[material]
@@ -169,14 +174,30 @@ class EMode:
             self.out.update(effective_index=list(neff[::-1]), TE_fraction=list(te[::-1]),
                             loss_dB_per_m=[0.0] * len(neff))   # unsorted on purpose
             y_core = next(iter(self.shapes.values()))["position"][1]
-            self.out.update(_window_fields(f, W, H, res, y_core))
+            self.fields = _window_fields(f, W, H, res, y_core)
         CALLS.append(("FDM", dict(BC=self.out["BC"], W=W, H=H, res=res)))
         return {"n_eff_tilde": self.out["effective_index"], "TE_fraction": self.out["TE_fraction"]}
 
     def get(self, key, profile="_default", simulation_name="emode"):
+        if key in DEPRECATED:
+            raise RuntimeError(f"get('{key}') is deprecated: use get_grid() or get_fields()")
         if key == "emode_version":
             return "mock"
         return self.out[key]
+
+    def get_grid(self, **kw):
+        _check(kw, GRID_ARGS, "get_grid")
+        f = self.fields
+        return SimpleNamespace(x=f["x"], y=f["y"], is_pml=False, is_expanded=False, is_bc=True)
+
+    def get_fields(self, key=None, **kw):
+        _check(kw, GRID_ARGS, "get_fields")
+        names = ["Ex", "Ey", "Hx", "Hy"] if key is None else ([key] if isinstance(key, str) else list(key))
+        if not GIVE_H and {"Hx", "Hy"} & set(names):
+            raise RuntimeError("no H fields in this mock")
+        f = self.fields
+        return SimpleNamespace(field=np.array([f[n] for n in names]), field_names=names,
+                               num_modes=f["Ex"].shape[0], grid=self.get_grid())
 
     def close(self, save=True, save_all_fields=False, file_type="eph", simulation_name="emode"):
         CALLS.append(("close", {}))
