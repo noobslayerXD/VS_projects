@@ -1,15 +1,23 @@
-"""Figures for the ADC tolerance study. Reads the results dictionary written by adc_study.py."""
+"""Figures for the ADC tolerance study. Reads the results dictionary written by adc_study.py
+and, for the mode figures (fig8 to fig12), the saved fields in <outdir>/modes/."""
 import os
 
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.patches import Rectangle
 
 SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3de"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"          # one colour per mode / coupler
 RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"]  # light -> dark = narrow -> wide access
 COUPLER = {1: ("TE$_0$→TE$_1$", BLUE), 2: ("TE$_0$→TE$_2$", ORANGE)}
+# Signed field maps: blue (negative) <-> red (positive), neutral gray at zero, equal steps per arm.
+ZERO = "#f0efec"
+FIELD = LinearSegmentedColormap.from_list("field", [
+    (0.0, "#0d366b"), (1 / 6, "#2a78d6"), (2 / 6, "#86b6ef"), (0.5, ZERO),
+    (4 / 6, "#f2a9a7"), (5 / 6, "#e34948"), (1.0, "#8c1d1d")])
 
 plt.rcParams.update({
     "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
@@ -198,6 +206,245 @@ def fig_bend(res, cfg, outdir, note):
     _save(fig, outdir, "fig7_bend_loss.png", note)
 
 
+# ------------------------------------------------------------------ mode fields
+def _mode_sets(res, outdir):
+    """The saved mode files that exist, keyed (coupler, access width, width error)."""
+    import modefields
+    sets = {}
+    for r in res.get("modes", []):
+        path = os.path.join(outdir, r["file"])
+        if os.path.exists(path):
+            sets[(r["m"], r["wa"], r["dw"])] = modefields.load(path)
+    return sets
+
+
+def _mode_rows(res):
+    return {(r["m"], r["wa"], r["dw"]): r for r in res.get("modes", [])}
+
+
+def _extent(sets, margin=450):
+    """Common x and y limits (nm) that show every coupler in `sets` at the same scale."""
+    cores = [c for s in sets for c in s["meta"]["cores"]]
+    h = sets[0]["meta"]["h_si"]
+    return ((min(c - w / 2 for c, w in cores) - margin, max(c + w / 2 for c, w in cores) + margin),
+            (-h / 2 - 380, h / 2 + 380))
+
+
+def _field_panel(ax, data, name, xlim, ylim):
+    """Re(Ex) of one stored mode, scaled to its own peak, with the silicon outlined."""
+    x, y = data["x"], data["y"]
+    ex = np.real(data["modes"][name]["Ex"])
+    dx, dy = np.diff(x).mean(), np.diff(y).mean()
+    ax.set_facecolor(ZERO)                                # outside the stored window the field is ~0
+    im = ax.imshow((ex / np.abs(ex).max()).T, origin="lower", cmap=FIELD, vmin=-1, vmax=1,
+                   extent=[x[0] - dx / 2, x[-1] + dx / 2, y[0] - dy / 2, y[-1] + dy / 2],
+                   interpolation="bilinear")
+    h = data["meta"]["h_si"]
+    for c, w in data["meta"]["cores"]:
+        ax.add_patch(Rectangle((c - w / 2, -h / 2), w, h, fill=False, ec=INK, lw=0.7))
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    ax.set_aspect("equal")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.grid(False)
+    for s in ax.spines.values():
+        s.set_visible(False)
+    return im
+
+
+def _scale_bar(ax, xlim, ylim, length=500):
+    x0, y0 = xlim[0] + 0.04 * (xlim[1] - xlim[0]), ylim[0] + 0.1 * (ylim[1] - ylim[0])
+    ax.plot([x0, x0 + length], [y0, y0], color=INK, lw=1.2, solid_capstyle="butt")
+    ax.text(x0 + length / 2, y0 + 0.04 * (ylim[1] - ylim[0]), f"{length:g} nm", ha="center", va="bottom",
+            fontsize=7, color=INK)
+
+
+def _field_grid(nrows, ncols, pw, ph, left=1.2, right=1.05, top=0.78, bottom=0.12, gapw=0.08, gaph=0.16):
+    """A grid of field panels sized in inches, so equal-aspect maps fill their axes,
+    plus a colour-bar axis in the right margin."""
+    fw = left + ncols * pw + (ncols - 1) * gapw + right
+    fh = top + nrows * ph + (nrows - 1) * gaph + bottom
+    fig, axes = plt.subplots(nrows, ncols, figsize=(fw, fh), squeeze=False)
+    fig.subplots_adjust(left=left / fw, right=(fw - right) / fw, bottom=bottom / fh, top=(fh - top) / fh,
+                        wspace=gapw / pw, hspace=gaph / ph)
+    ch = min(2.2, nrows * ph)
+    cax = fig.add_axes([(fw - right + 0.18) / fw, (bottom + (nrows * ph + (nrows - 1) * gaph - ch) / 2) / fh,
+                        0.09 / fw, ch / fh])
+    return fig, axes, cax
+
+
+def _field_colorbar(fig, im, cax):
+    cb = fig.colorbar(im, cax=cax, ticks=[-1, 0, 1])
+    cb.set_label("Re(E$_x$), each mode scaled to its peak", color=INK2)
+    cb.outline.set_visible(False)
+    cb.ax.tick_params(length=0)
+
+
+def fig_mode_gallery(res, cfg, outdir, note, m):
+    """The four modes of every nominal coupler of one kind (width error 0)."""
+    sets = {k: v for k, v in _mode_sets(res, outdir).items() if k[0] == m and k[2] == 0}
+    if not sets:
+        return
+    rows = _mode_rows(res)
+    widths = sorted(k[1] for k in sets)
+    xlim, ylim = _extent(list(sets.values()))
+    pw = 2.15
+    ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
+    fig, axes, cax = _field_grid(len(widths), 4, pw, ph)
+    cols = [("access", "Access strip alone: TE$_0$"), ("bus", f"Bus strip alone: TE$_{m}$"),
+            ("upper", "Upper supermode"), ("lower", "Lower supermode")]
+    for i, wa in enumerate(widths):
+        data, r = sets[(m, wa, 0)], rows[(m, wa, 0)]
+        for j, (name, title) in enumerate(cols):
+            ax = axes[i, j]
+            im = _field_panel(ax, data, name, xlim, ylim)
+            label = f"n$_{{eff}}$ {data['modes'][name]['neff']:.3f}"
+            if name in ("upper", "lower"):
+                label += f"   access {100 * r['share_' + name]:.0f} %"
+            ax.text(0.02, 0.95, label, transform=ax.transAxes, va="top", ha="left", fontsize=7.5, color=INK)
+            if i == 0:
+                ax.set_title(title, fontsize=9)
+        wb = data["meta"]["cores"][1][1]
+        axes[i, 0].text(-0.03, 0.5, f"W$_a$ {wa:.0f} nm\nbus {wb:.0f} nm", transform=axes[i, 0].transAxes,
+                        ha="right", va="center", fontsize=8, color=INK2)
+    _scale_bar(axes[-1, 0], xlim, ylim)
+    _field_colorbar(fig, im, cax)
+    fig.suptitle(f"{COUPLER[m][0]} couplers as designed (bus width W*): the strip modes and the two "
+                 "supermodes", x=0.01, ha="left", fontsize=10, fontweight="bold")
+    _save(fig, outdir, f"fig{7 + m}_modes_TE0-TE{m}.png", note)
+
+
+def fig_supermodes_error(res, cfg, outdir, note):
+    """Upper supermode of the narrowest and widest coupler of each kind under width errors."""
+    sets, rows = _mode_sets(res, outdir), _mode_rows(res)
+    if not sets:
+        return
+    errors = sorted({k[2] for k in sets})
+    picks = []
+    for m in sorted({k[0] for k in sets}):
+        ws = sorted({k[1] for k in sets if k[0] == m})
+        for wa in dict.fromkeys([ws[0], ws[-1]]):
+            if all((m, wa, e) in sets for e in errors):
+                picks.append((m, wa))
+    if not picks:
+        return
+    xlim, ylim = _extent([sets[(m, wa, e)] for m, wa in picks for e in errors])
+    pw = 2.4
+    ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
+    fig, axes, cax = _field_grid(len(picks), len(errors), pw, ph)
+    for i, (m, wa) in enumerate(picks):
+        for j, e in enumerate(errors):
+            ax, r = axes[i, j], rows[(m, wa, e)]
+            im = _field_panel(ax, sets[(m, wa, e)], "upper", xlim, ylim)
+            ax.text(0.02, 0.95, f"access {100 * r['share_upper']:.0f} %", transform=ax.transAxes,
+                    va="top", ha="left", fontsize=7.5, color=INK)
+            if i == 0:
+                ax.set_title(f"ΔW = {e:+g} nm", fontsize=9)
+        axes[i, 0].text(-0.03, 0.5, f"{COUPLER[m][0]}\nW$_a$ {wa:.0f} nm", transform=axes[i, 0].transAxes,
+                        ha="right", va="center", fontsize=8, color=INK2)
+    _scale_bar(axes[-1, 0], xlim, ylim)
+    _field_colorbar(fig, im, cax)
+    fig.suptitle("Upper supermode under a uniform width error: its share in the access strip "
+                 "(50 % = phase matched)", x=0.01, ha="left", fontsize=10, fontweight="bold")
+    _save(fig, outdir, "fig10_supermodes_width_error.png", note)
+
+
+def fig_mode_checks(res, cfg, outdir, note):
+    """Why the coupling grows, whether the coupling is two-mode, and where phase matching is."""
+    rows = res.get("modes", [])
+    sets = _mode_sets(res, outdir)
+    nominal = [r for r in rows if r["dw"] == 0]
+    if not nominal:
+        return
+    ramp = _ramp(sorted({r["wa"] for r in nominal}))
+    fig, axes = plt.subplots(1, 3, figsize=(11.4, 3.5))
+
+    ax = axes[0]                                          # access mode alone along the mid-plane
+    gap = cfg["gap"]
+    m0 = min(r["m"] for r in nominal)
+    for wa in sorted(ramp):
+        data = sets.get((m0, wa, 0))
+        if data is None:
+            continue
+        x, y = data["x"], data["y"]
+        j = int(np.argmin(np.abs(y)))
+        ex2 = np.abs(np.real(data["modes"]["access"]["Ex"][:, j])) ** 2
+        u = x - wa / 2                                    # distance from the access strip's gap-side wall
+        keep = (u >= 0) & (u <= gap + 400)
+        ax.plot(u[keep], 10 * np.log10(ex2[keep] / ex2.max() + 1e-12), color=ramp[wa], label=f"{wa:.0f} nm")
+    ax.axvspan(gap, gap + 400, color="#efeeea", zorder=0, lw=0)
+    ax.annotate("bus strip", (gap + 12, -1.5), ha="left", va="top", fontsize=8, color=INK2)
+    ax.set_xlim(0, gap + 400)
+    ax.set_ylim(-35, 1)
+    ax.set_xlabel("Distance from the access strip's wall (nm)")
+    ax.set_ylabel("|E$_x$|$^2$ of the access mode alone (dB)")
+    ax.set_title("Narrower access: stronger tail at the bus")
+    ax.legend(title="Access width", loc="upper right", fontsize=7.5, title_fontsize=8)
+
+    ax = axes[1]                                          # two-mode residual
+    for m in sorted({r["m"] for r in rows}):
+        name, col = COUPLER[m]
+        ws = sorted({r["wa"] for r in rows if r["m"] == m})
+        worst = [100 * max(max(r["residual_upper"], r["residual_lower"]) for r in rows
+                           if r["m"] == m and r["wa"] == wa) for wa in ws]
+        ax.plot(ws, worst, "o-", color=col, label=name)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("Access width W$_a$ (nm)")
+    ax.set_ylabel("Field not explained by the two strip modes (%)")
+    ax.set_title("Supermodes are two-mode mixtures")
+    ax.legend(loc="upper right")
+
+    ax = axes[2]                                          # design point: W* against phase matching
+    for m in sorted({r["m"] for r in nominal}):
+        name, col = COUPLER[m]
+        sel = sorted((r for r in nominal if r["m"] == m), key=lambda r: r["wa"])
+        wa = [r["wa"] for r in sel]
+        ax.plot(wa, [r["wb_star"] - r["wb_even_fields"] for r in sel], "o-", color=col,
+                label=f"{name}: even mixture (fields)")
+        ax.plot(wa, [r["wb_star"] - r["wb_iso"] for r in sel], "s", ls=(0, (4, 3)), color=col, mfc=SURFACE,
+                mec=col, label=f"{name}: equal strip indices")
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("Access width W$_a$ (nm)")
+    ax.set_ylabel("W* minus phase-matched bus width (nm)")
+    ax.set_title("Anticrossing minimum W* sits too wide")
+    ax.legend(loc="upper right", fontsize=7.5)
+    fig.suptitle("Mode-field checks", x=0.01, ha="left", fontsize=10, fontweight="bold")
+    fig.tight_layout()
+    _save(fig, outdir, "fig11_mode_checks.png", note)
+
+
+def fig_tolerance_fields(res, cfg, outdir, note):
+    """Unconverted power at the nominal length: two-mode model (lines) against the fields (dots)."""
+    rows = res.get("modes", [])
+    if not rows or "tolerance" not in res:
+        return
+    lim = cfg["residual_limit_dB"]
+    ramp = _ramp(cfg["access_widths"])
+    fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.6), sharey=True)
+    for ax, m in zip(axes, (1, 2)):
+        for t in [t for t in res["tolerance"] if t["m"] == m]:
+            col = ramp.get(t["wa"], INK2)
+            ax.plot(t["dw"], t["residual_dB"], color=col, lw=1.4, label=f"{t['wa']:.0f} nm")
+            sel = sorted((r for r in rows if r["m"] == m and r["wa"] == t["wa"]), key=lambda r: r["dw"])
+            ax.plot([r["dw"] for r in sel], [max(r["unconverted_fields_dB"], -45) for r in sel], "o",
+                    color=col, ms=6.5)
+        ax.axhline(lim, color=INK2, lw=0.9, ls=(0, (4, 3)))
+        ax.annotate(f"limit {lim:.0f} dB", (ax.get_xlim()[0], lim), xytext=(4, 3), textcoords="offset points",
+                    fontsize=8, color=INK2)
+        ax.set_title(COUPLER[m][0])
+        ax.set_xlabel("Uniform width error ΔW (nm)")
+        ax.set_ylim(-45, 0)
+    axes[0].set_ylabel("Unconverted power at L$_c$ (dB)")
+    used = [ax for ax in axes if ax.get_legend_handles_labels()[0]]
+    if used:
+        used[-1].legend(title="Access width", loc="lower right", ncol=2)
+    fig.suptitle("Coupler as designed: two-mode model (lines) and mode fields (dots)",
+                 x=0.01, ha="left", fontsize=10, fontweight="bold")
+    fig.tight_layout()
+    _save(fig, outdir, "fig12_tolerance_fields.png", note)
+
+
 def make_all(res, cfg, outdir, backend):
     note = {"emode": "EMode2D", "empy": "open-source cross-check solver (EMpy), not EMode"}.get(backend, backend)
     note = f"Solver: {note} · grid {cfg['resolution']:g} nm"
@@ -207,3 +454,9 @@ def make_all(res, cfg, outdir, backend):
                      ("wavelength", fig_wavelength), ("bend", fig_bend)):
         if need in res:
             fn(res, cfg, outdir, note)
+    if res.get("modes"):
+        for m in (1, 2):
+            fig_mode_gallery(res, cfg, outdir, note, m)
+        fig_supermodes_error(res, cfg, outdir, note)
+        fig_mode_checks(res, cfg, outdir, note)
+        fig_tolerance_fields(res, cfg, outdir, note)

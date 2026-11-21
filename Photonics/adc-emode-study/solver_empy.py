@@ -27,6 +27,7 @@ All lengths at the interface are in nm, as in EMode.
 import numpy as np
 from scipy.sparse import linalg
 from EMpy.modesolvers.FD import VFDModeSolver, FDMode
+from EMpy.utils import centered1d, centered2d
 
 
 def n_si(wl_nm):
@@ -74,16 +75,38 @@ class EMpySolver:
         y = np.concatenate([_segment(a, b, d)[:-1] for a, b in zip(ye, ye[1:])] + [[ye[-1]]])
         return x, y
 
-    def modes(self, cores, wavelength, num_modes=8):
+    def modes(self, cores, wavelength, num_modes=8, frame=None):
         """Solve one straight cross-section.
 
         cores      : list of (x_centre_nm, width_nm) silicon strips, all h_si thick
         wavelength : nm
+        frame      : strips that set the window and grid lines (default: cores), so one
+                     strip of a coupler can be solved on the coupler's grid
         Returns (n_eff, TE_fraction) as arrays sorted by decreasing n_eff.
         """
+        neff, te, _ = self._solve(cores, wavelength, num_modes, frame)
+        return neff, te
+
+    def mode_fields(self, cores, wavelength, num_modes=8, frame=None):
+        """Like modes(), and also returns the fields.
+
+        Returns (n_eff, TE_fraction, fields) sorted by decreasing n_eff. `fields` holds
+        x and y (1D, nm, cell centres; silicon from -h_si/2 to +h_si/2) and Ex, Ey, Hx,
+        Hy as arrays (mode, x, y). EMpy puts E at cell centres and H on the grid nodes;
+        H is averaged onto the cell centres here.
+        """
+        neff, te, m = self._solve(cores, wavelength, num_modes, frame)
+        fields = dict(x=centered1d(np.real(m[0].x)) * 1e3, y=centered1d(np.real(m[0].y)) * 1e3)
+        fields["Ex"] = np.array([mode.Ex for mode in m])
+        fields["Ey"] = np.array([mode.Ey for mode in m])
+        fields["Hx"] = np.array([centered2d(mode.Hx) for mode in m])
+        fields["Hy"] = np.array([centered2d(mode.Hy) for mode in m])
+        return neff, te, fields
+
+    def _solve(self, cores, wavelength, num_modes, frame=None):
         n_core, n_clad = self.indices(wavelength)
         wl, h = wavelength * 1e-3, self.h_si * 1e-3
-        x, y = self._grid(cores)
+        x, y = self._grid(frame or cores)
 
         def eps(xc, yc):
             X, Y = np.meshgrid(xc, yc, indexing="ij")
@@ -103,9 +126,10 @@ class EMpySolver:
         Hx = [vecs[:nx * ny, i].reshape(nx, ny) for i in order]
         Hy = [vecs[nx * ny:, i].reshape(nx, ny) for i in order]
         Hz, Ex, Ey, Ez = fd.compute_other_fields(neff, Hx, Hy)
-        te = [FDMode(wl, x, y, n, ex, ey, ez, hx, hy, hz).normalize().TEfrac()
-              for n, ex, ey, ez, hx, hy, hz in zip(neff, Ex, Ey, Ez, Hx, Hy, Hz)]
-        return np.real(neff).astype(float), np.real(np.array(te)).astype(float)
+        m = [FDMode(wl, x, y, n, ex, ey, ez, hx, hy, hz).normalize()
+             for n, ex, ey, ez, hx, hy, hz in zip(neff, Ex, Ey, Ez, Hx, Hy, Hz)]
+        te = [mode.TEfrac() for mode in m]
+        return np.real(neff).astype(float), np.real(np.array(te)).astype(float), m
 
     def bend_loss(self, width, radius, wavelength, n_guess=None):
         """No bend solver in this backend."""

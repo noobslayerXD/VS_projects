@@ -13,12 +13,24 @@ Documented conventions it enforces:
   - bend_radius measured at x = 0 and larger than W/2; n_eff and loss_dB_per_m
     referenced to that radius
   - reset(kind) only 'shapes', 'settings' or 'all'; settings persist between solves
+  - after a straight solve, get('x'), get('y') give the window's grid (x centred, y from
+    the bottom wall) and get('Ex' | 'Ey' | 'Hx' | 'Hy') one array per component with the
+    modes in the same order as get('effective_index'). FIELD_LAYOUT picks (mode, x, y)
+    or (mode, y, x); GIVE_H = False leaves the H fields out. EMode's own layout and grid
+    points are not documented, so the solver must work with either.
 """
 import math
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+import numpy as np
+from scipy.interpolate import RegularGridInterpolator
+
+_here = os.path.dirname(os.path.abspath(__file__))
+for _study in (os.path.join(_here, "..", ".."), os.path.join(_here, "..", "..", "adc-emode-study")):
+    if os.path.exists(os.path.join(_study, "solver_empy.py")):   # tests/ inside or beside the study folder
+        sys.path.insert(0, os.path.abspath(_study))
+        break
 from solver_empy import EMpySolver, n_sio2  # noqa: E402
 
 CONSTRUCTOR = {"simulation_name", "license_type", "clear", "save_path", "verbose", "roaming",
@@ -46,6 +58,26 @@ FDM_ARGS = {"profile", "section", "propagation_distance", "mode_filter", "fLancz
 BOUNDARY = {"auto", "TE", "TM", "TE-h", "TM-h", "TE-v", "TM-v"} | {a + b for a in "0SA" for b in "0SA"}
 CALLS = []                                         # log of calls, for the test script
 SHIFT = 0.05                                       # bend shift factor; the test raises it
+FIELD_LAYOUT = "xy"                                # field arrays as (mode, x, y) or "yx": (mode, y, x)
+GIVE_H = True                                      # False: get('Hx'), get('Hy') fail
+
+
+def _window_fields(f, W, H, res, y_core):
+    """EMpy fields interpolated onto the cell centres of EMode's window (zero outside
+    EMpy's smaller domain), modes in reverse n_eff order like effective_index below."""
+    xe = np.arange(-W / 2 + res / 2, W / 2, res)
+    ye = np.arange(res / 2, H, res)
+    X, Y = np.meshgrid(xe, ye - y_core, indexing="ij")
+    out = dict(x=xe, y=ye)
+    for comp in ("Ex", "Ey", "Hx", "Hy") if GIVE_H else ("Ex", "Ey"):
+        stack = []
+        for a in f[comp][::-1]:
+            part = [RegularGridInterpolator((f["x"], f["y"]), p, bounds_error=False, fill_value=0.0)((X, Y))
+                    for p in (a.real, a.imag)]
+            v = part[0] + 1j * part[1]
+            stack.append(v if FIELD_LAYOUT == "xy" else v.T)
+        out[comp] = np.array(stack)
+    return out
 
 
 def _check(kw, allowed, fn):
@@ -133,9 +165,11 @@ class EMode:
             self.truth = dict(n_core=n_true, loss_core=loss_true)
         else:
             assert s["pml_NSEW_bool"] == [0, 0, 0, 0] and s["max_effective_index"] == 0
-            neff, te = solver.modes(cores, s["wavelength"], s["num_modes"])
+            neff, te, f = solver.mode_fields(cores, s["wavelength"], s["num_modes"])
             self.out.update(effective_index=list(neff[::-1]), TE_fraction=list(te[::-1]),
                             loss_dB_per_m=[0.0] * len(neff))   # unsorted on purpose
+            y_core = next(iter(self.shapes.values()))["position"][1]
+            self.out.update(_window_fields(f, W, H, res, y_core))
         CALLS.append(("FDM", dict(BC=self.out["BC"], W=W, H=H, res=res)))
         return {"n_eff_tilde": self.out["effective_index"], "TE_fraction": self.out["TE_fraction"]}
 

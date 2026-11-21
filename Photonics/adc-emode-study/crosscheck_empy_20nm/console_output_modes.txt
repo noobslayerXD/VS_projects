@@ -1,0 +1,79 @@
+
+[modes] width errors [-10, 0, 10] nm; fields saved in crosscheck_empy_20nm/modes
+                         dn_s (1e-3)     access share of    unconverted at   two-mode
+                                         upper supermode    L_c (dB)         residual
+  coupler  W_a   dW    solved  model     fields  model      fields  model    upper
+  TE0-TE1   320   -10   115.23 114.76     0.281  0.415        -6.8   -13.2    1.31 %
+  TE0-TE1   320    +0   105.59 105.49     0.372  0.500       -11.9   -60.0    1.42 %
+  TE0-TE1   320   +10   100.14 100.53     0.479  0.590       -21.0   -14.2    1.53 %
+  TE0-TE1   360   -10    69.96  69.30     0.280  0.373        -6.7   -10.7    0.77 %
+  TE0-TE1   360    +0    63.45  63.30     0.409  0.500       -14.8   -60.0    0.89 %
+  TE0-TE1   360   +10    61.74  62.19     0.550  0.625       -19.3   -12.0    1.00 %
+  TE0-TE1   400   -10    43.99  43.64     0.269  0.341        -6.3    -9.2    0.47 %
+  TE0-TE1   400    +0    39.60  39.85     0.432  0.500       -17.3   -60.0    0.57 %
+  TE0-TE1   400   +10    40.00  40.22     0.604  0.660       -13.7    -9.9    0.67 %
+  TE0-TE1   440   -10    29.34  28.80     0.252  0.302        -5.6    -7.4    0.30 %
+  TE0-TE1   440    +0    26.10  25.99     0.442  0.500       -18.7   -60.0    0.38 %
+  TE0-TE1   440   +10    27.37  27.69     0.640  0.684       -10.7    -8.4    0.46 %
+  TE0-TE1   480   -10    20.59  20.22     0.235  0.279        -5.0    -6.5    0.20 %
+  TE0-TE1   480    +0    18.08  18.11     0.449  0.500       -19.9   -60.0    0.27 %
+  TE0-TE1   480   +10    19.48  19.81     0.666  0.700        -9.1    -7.5    0.33 %
+  TE0-TE2   320   -10    98.93  98.69     0.247  0.365        -5.5    -9.8    1.34 %
+  TE0-TE2   320    +0    88.28  88.31     0.388  0.500       -13.0   -60.0    1.55 %
+  TE0-TE2   320   +10    85.73  85.98     0.556  0.645       -18.3   -10.6    1.75 %
+  TE0-TE2   360   -10    60.84  60.59     0.231  0.303        -4.8    -6.9    0.75 %
+  TE0-TE2   360    +0    52.51  52.51     0.426  0.500       -16.6   -60.0    0.95 %
+  TE0-TE2   360   +10    53.79  53.99     0.645  0.692       -10.7    -8.3    1.14 %
+  TE0-TE2   400   -10    39.18  38.96     0.206  0.254        -3.9    -5.1    0.43 %
+  TE0-TE2   400    +0    32.60  32.64     0.447  0.500       -19.5   -60.0    0.61 %
+  TE0-TE2   400   +10    35.64  35.78     0.706  0.733        -7.3    -6.3    0.76 %
+  TE0-TE2   440   -10    26.77  26.62     0.182  0.213        -3.1    -3.7    0.26 %
+  TE0-TE2   440    +0    21.42  21.40     0.458  0.500       -21.5   -60.0    0.40 %
+  TE0-TE2   440   +10    25.02  25.16     0.749  0.770        -5.2    -4.6    0.53 %
+  TE0-TE2   480   -10    19.22  19.07     0.162  0.188        -2.5    -3.0    0.16 %
+  TE0-TE2   480    +0    14.81  14.87     0.466  0.500       -23.3   -60.0    0.28 %
+  TE0-TE2   480   +10    18.18  18.24     0.777  0.789        -4.1    -3.8    0.38 %
+
+  Is the coupling the intended two-mode coupling?
+    The two strip modes explain each supermode to within 2.22 % of its field (largest residual).
+    Supermode splitting solved at the exact geometry against the anticrossing fit: largest difference 1.9 %.
+    Upper supermode in phase and lower in anti-phase across the gap in every case: True.
+    Lowest TE fraction of a supermode 0.937; largest share of a field within 300 nm of the window walls 1.3e-03.
+  Why the coupling is stronger: |Ex|^2 of the access mode alone at the bus edge, relative to its peak:
+    320 nm: -11.4 dB, 360 nm: -14.5 dB, 400 nm: -16.9 dB, 440 nm: -18.8 dB, 480 nm: -20.4 dB
+  Phase matching of the nominal designs (dW = 0). The model assumes the upper supermode is
+  an even mixture (access share 0.5) at the anticrossing minimum W*. The fields give:
+    coupler  W_a   access share  unconverted   bus width (nm): anticrossing  isolated   even mixture
+                   (fields)      at L_c (dB)                   minimum W*    W_iso      (fields)
+    TE0-TE1   320     0.372       -11.9                       701.8       691.0       690.8
+    TE0-TE1   360     0.409       -14.8                       771.7       765.5       765.7
+    TE0-TE1   400     0.432       -17.3                       845.5       841.3       841.9
+    TE0-TE1   440     0.442       -18.7                       921.8       919.0       919.1
+    TE0-TE1   480     0.449       -19.9                       999.1       996.4       997.1
+    TE0-TE2   320     0.388       -13.0                      1078.6      1065.2      1067.1
+    TE0-TE2   360     0.426       -16.6                      1179.6      1171.6      1173.7
+    TE0-TE2   400     0.447       -19.5                      1288.3      1282.9      1284.8
+    TE0-TE2   440     0.458       -21.5                      1401.1      1396.6      1398.7
+    TE0-TE2   480     0.466       -23.3                      1516.1      1512.9      1514.4
+    'even mixture' is W* moved by the detuning the fields show, dn_det = (1 - 2 share) dn_s,
+    divided by the bus slope dn/dW.
+  Access share of the upper supermode, fields against the model: largest difference 0.134.
+  Mode summary table: crosscheck_empy_20nm/modes_summary.csv
+
+[plots]
+  wrote crosscheck_empy_20nm/fig1_phase_matching.png
+  wrote crosscheck_empy_20nm/fig2_anticrossing.png
+  wrote crosscheck_empy_20nm/fig3_design.png
+  wrote crosscheck_empy_20nm/fig4_tolerance_curves.png
+  wrote crosscheck_empy_20nm/fig5_tolerance_summary.png
+  wrote crosscheck_empy_20nm/fig6_wavelength.png
+  no bend-loss data (this solver has no bend solver): fig7 skipped
+  wrote crosscheck_empy_20nm/fig8_modes_TE0-TE1.png
+  wrote crosscheck_empy_20nm/fig9_modes_TE0-TE2.png
+  wrote crosscheck_empy_20nm/fig10_supermodes_width_error.png
+  wrote crosscheck_empy_20nm/fig11_mode_checks.png
+  wrote crosscheck_empy_20nm/fig12_tolerance_fields.png
+
+Summary table: crosscheck_empy_20nm/summary.csv
+
+Done in 2.0 min, 90 new mode solves. Results in crosscheck_empy_20nm/

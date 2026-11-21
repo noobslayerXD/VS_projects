@@ -25,6 +25,9 @@ that share power between the two strips. Their index difference is dn_s.
    centre lines stay where they are. So access -> W_a + dW, bus -> W_star + dW and
    gap -> gap - dW. The coupler length stays at the nominal L_c. The tolerance is
    the largest |dW| for which the unconverted power 1 - eta stays below -15 dB.
+4. Mode fields ('modes' step): the supermodes and the two strip modes are solved
+   on one grid and saved, and each supermode is fitted with the two strip modes.
+   That checks the two-mode picture behind step 2 directly on the fields.
 
 Usage
 -----
@@ -32,11 +35,14 @@ Usage
     python adc_study.py --backend emode --quick           # coarse first look (minutes)
     python adc_study.py --backend emode                   # full study
     python adc_study.py --backend empy --quick            # open-source cross-check, no EMode
+    python adc_study.py --backend emode --steps modes,plots   # add the mode fields to a finished run
     python adc_study.py --backend emode --steps plots     # redraw figures from saved results
 
-Steps: check, sweep, design, tolerance, wavelength, bend, validate, plots.
-Solved cross-sections are cached in results_<backend>/cache.json, so a rerun only
-solves what is new. Delete that file to force new solves.
+Steps: check, sweep, design, tolerance, wavelength, bend, validate, modes, plots.
+Results go to results_<backend>/ next to this script (or --out). Solved
+cross-sections are cached in its cache.json, so a rerun only solves what is new.
+Delete that file to force new solves. Saved mode fields (modes/*.npz) are reused
+the same way.
 """
 import argparse
 import json
@@ -46,6 +52,8 @@ import time
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator
+
+import modefields
 
 # ----------------------------------------------------------------------------
 # Study parameters (all lengths in nm). Edit these.
@@ -67,6 +75,8 @@ CFG = dict(
     convergence_resolutions=[40, 20, 10], # for the mesh-convergence check
     modes_single=10, modes_coupled=10,    # number of modes requested per solve
     couplers=[1, 2],                      # 1: TE0-TE1, 2: TE0-TE2
+    mode_errors=[-10, 0, 10],             # width errors dW whose mode fields are saved ('modes' step)
+    mode_crop=600,                        # cladding kept around the strips in the saved fields
 )
 QUICK = dict(                             # coarse settings for a first look
     access_widths=[320, 400, 480], width_errors=[-10, 0, 10],
@@ -194,6 +204,17 @@ class Study:
         print("Expected: a TE0 mode with n_eff near 2.2 and TE fraction near 1, then a TM0 mode near 1.7.")
         if hasattr(self.s, "describe"):
             print(self.s.describe())
+        if hasattr(self.s, "mode_fields"):                # the field reading used by the 'modes' step
+            _, _, f = self.s.mode_fields([(0.0, float(wa))], wl, 4)
+            x, y, e = f["x"], f["y"], np.abs(f["Ex"][0]) ** 2
+            xc, yc = (round(float((e.sum(axis) * v).sum() / e.sum())) + 0 for axis, v in ((1, x), (0, y)))
+            comps = [k for k in ("Ex", "Ey", "Hx", "Hy") if k in f]
+            print(f"Fields: {x.size} x {y.size} points, x {x[0]:.0f} to {x[-1]:.0f} nm, "
+                  f"y {y[0]:.0f} to {y[-1]:.0f} nm; components {', '.join(comps)}")
+            print(f"  TE0 |Ex|^2 is centred at x = {xc:.0f} nm, y = {yc:.0f} nm "
+                  "(expected 0, 0: the centre of the strip)")
+            if "Hx" not in f:
+                print("  No H field: the 'modes' step will weight the modes by their field norm, not by power.")
 
     def step_sweep(self):
         """Isolated strips: n_eff of TE0, TE1, TE2 against width, and the slopes dn/dW."""
@@ -406,6 +427,242 @@ class Study:
         self.res["validate"] = val
         self.save()
 
+    def step_modes(self):
+        """Mode fields of every coupler, saved for figures, and checks that the tolerance
+        comes from the intended two-mode coupling and not from something else.
+
+        For each design and each width error in cfg['mode_errors'] (same geometry rule as
+        the tolerance step) three cross-sections are solved on the coupler's grid: the
+        coupler (two supermodes), the access strip alone (TE0) and the bus strip alone
+        (TE1 or TE2). Each supermode is fitted with the two strip modes. Checks:
+          share     share of the upper supermode's power in the access mode, from the
+                    fit, against the two-mode model of the tolerance step,
+                    1/2 (1 - dn_det/dn_s). 0.5 is an even mixture (phase matched).
+          dn_s      supermode index difference solved at this exact geometry, against
+                    the anticrossing fit the tolerance step uses.
+          residual  share of each supermode's field that the two strip modes do not
+                    explain: a third mode taking part would show up here.
+          edge      share of a mode's field within 300 nm of the window walls.
+          tail      access mode alone: |Ex|^2 at the bus edge on the mid-plane, relative
+                    to its peak. The coupling strength follows this tail.
+        Fields go to <out>/modes/*.npz (read them with modefields.load), the checks to
+        results.json ('modes') and modes_summary.csv.
+        """
+        if not hasattr(self.s, "mode_fields"):
+            print("\n[modes] skipped: this solver does not return fields")
+            return
+        cfg, gap = self.cfg, self.cfg["gap"]
+        folder = os.path.join(self.out, "modes")
+        os.makedirs(folder, exist_ok=True)
+        tol = {(t["m"], t["wa"]): t for t in self.res.get("tolerance", [])}
+        print(f"\n[modes] width errors {cfg['mode_errors']} nm; fields saved in {folder}")
+        print("                         dn_s (1e-3)     access share of    unconverted at   two-mode")
+        print("                                         upper supermode    L_c (dB)         residual")
+        print("  coupler  W_a   dW    solved  model     fields  model      fields  model    upper")
+        rows = []
+        for d in self._designs():
+            t = tol.get((d["m"], d["wa"]))
+            for dw in cfg["mode_errors"]:
+                dw = float(dw)
+                cores = [(0.0, d["wa"] + dw), (d["wa"] / 2 + gap + d["wb_star"] / 2, d["wb_star"] + dw)]
+                tag = f"TE0-TE{d['m']}_wa{d['wa']:g}_dw{dw:+g}"
+                path = os.path.join(folder, tag + ".npz")
+                key = "|".join(str(v) for v in (
+                    self.s.name, self.s.resolution, self.s.side_margin, self.s.vert_margin, self.s.h_si,
+                    cfg["wavelength"], self.s.fixed_indices, cfg["mode_crop"],
+                    ";".join(f"{c:.2f},{w:.2f}" for c, w in cores)))
+                meta = None
+                if os.path.exists(path):
+                    try:
+                        meta = modefields.load(path)["meta"]
+                    except Exception:
+                        meta = None
+                    if meta is not None and meta.get("key") != key:
+                        meta = None                       # saved for another geometry or grid
+                if meta is None:
+                    meta = self._solve_mode_set(d, dw, cores, key, path, tag)
+                r = self._mode_row(d, dw, meta, t)
+                rows.append(r)
+                print(f"  TE0-TE{d['m']}  {d['wa']:4.0f}  {dw:+4.0f}   {1e3 * r['dn_s']:6.2f} "
+                      f"{1e3 * r['dn_s_model']:6.2f}     {r['share_upper']:5.3f}  {r['share_model']:5.3f}      "
+                      f"{r['unconverted_fields_dB']:6.1f}  {r['unconverted_model_dB']:6.1f}   "
+                      f"{100 * r['residual_upper']:5.2f} %")
+        self.res["modes"] = rows
+        self.save()
+        self._modes_report(rows)
+
+    def _guided_te(self, neff, te):
+        """Indices of the guided TE modes, highest index first (neff is sorted)."""
+        return [i for i in range(len(neff)) if neff[i] > N_GUIDED and te[i] > 0.5]
+
+    def _solve_mode_set(self, d, dw, cores, key, path, tag):
+        """Solve a coupler and its two strips on one grid, check the fields, save them."""
+        s, cfg, wl, m = self.s, self.cfg, self.cfg["wavelength"], d["m"]
+        nc, tc, fc = s.mode_fields(cores, wl, cfg["modes_coupled"])
+        na, ta, fa = s.mode_fields(cores[:1], wl, cfg["modes_single"], frame=cores)
+        nb, tb, fb = s.mode_fields(cores[1:], wl, cfg["modes_single"], frame=cores)
+        self.n_new += 3
+        x, y = fc["x"], fc["y"]
+        for f in (fa, fb):
+            if f["x"].shape != x.shape or f["y"].shape != y.shape or not (
+                    np.allclose(f["x"], x) and np.allclose(f["y"], y)):
+                raise RuntimeError(f"{tag}: the strip solves are not on the coupler's grid")
+        ga, gb, gc = self._guided_te(na, ta), self._guided_te(nb, tb), self._guided_te(nc, tc)
+        if not ga or len(gb) <= m or len(gc) < 2:
+            raise RuntimeError(f"{tag}: guided TE modes missing (access {len(ga)}, bus {len(gb)}, "
+                               f"coupler {len(gc)})")
+        n_a = self.n_iso(cores[0][1], wl)                 # picks the supermode pair, as in splitting()
+        k = int(np.argmin(np.abs((nc[gc[:-1]] + nc[gc[1:]]) / 2 - n_a)))
+        iu, il = gc[k], gc[k + 1]
+
+        comps = ("Ex", "Ey", "Hx", "Hy") if all("Hx" in f and "Hy" in f for f in (fa, fb, fc)) else ("Ex", "Ey")
+        w = modefields.weights(x, y)
+
+        def mode(f, i):
+            return modefields.normalised({c: f[c][i] for c in comps}, w)
+
+        (x_acc, _), (x_bus, w_bus) = cores
+        lobe = (x_bus - w_bus / 2 + w_bus / (2 * (m + 1)), 0.0)   # centre of the bus lobe next to the gap
+        acc, bus = mode(fa, ga[0]), mode(fb, gb[m])
+        acc = modefields.rotated(acc, modefields.phase_at(acc, x, y, (x_acc, 0.0)))
+        bus = modefields.rotated(bus, modefields.phase_at(bus, x, y, lobe))
+        out, checks = dict(access=acc, bus=bus), {}
+        for name, i in (("upper", iu), ("lower", il)):
+            sup = mode(fc, i)
+            alpha, beta, share, residual = modefields.decompose(sup, acc, bus, w)
+            out[name] = modefields.rotated(sup, np.conj(alpha) / abs(alpha))
+            checks[name] = dict(share=share, residual=residual,
+                                bus_sign=int(np.sign(np.real(beta * np.conj(alpha)))))
+        picked = dict(access=(na, ta, ga[0]), bus=(nb, tb, gb[m]), upper=(nc, tc, iu), lower=(nc, tc, il))
+        meta = dict(key=key, tag=tag, backend=s.name, resolution=s.resolution, wavelength=wl, h_si=s.h_si,
+                    coupler=m, access_width=d["wa"], width_error=dw,
+                    cores=[[float(c), float(cw)] for c, cw in cores],
+                    norm="power" if "Hx" in comps else "field",
+                    modes={n: dict(neff=float(nn[i]), te=float(tt[i])) for n, (nn, tt, i) in picked.items()},
+                    checks=checks, dn_s=float(nc[iu] - nc[il]),
+                    tail_dB=modefields.level_dB(acc, x, y, x_bus - w_bus / 2),
+                    edge_fraction=max(modefields.edge_fraction(f, x, y, w) for f in out.values()),
+                    imaginary_fraction=max(modefields.imaginary_fraction(f, w) for f in out.values()))
+        c = cfg["mode_crop"]
+        xlim = (min(cc - cw / 2 for cc, cw in cores) - c, max(cc + cw / 2 for cc, cw in cores) + c)
+        modefields.save(path, x, y, out, meta, xlim, (-s.h_si / 2 - c, s.h_si / 2 + c))
+        return meta
+
+    def _model_at(self, t, dw):
+        """dn_min and dn_det of the tolerance step's two-mode model at width error dw."""
+        pts = t["points"]
+        p = next((p for p in pts if abs(p["dw"] - dw) < 1e-9), None)
+        if p is not None:
+            return p["dn_min"], p["dn_det"]
+        e = [p["dw"] for p in pts]
+        if not min(e) <= dw <= max(e):
+            return float("nan"), float("nan")
+        deg = min(2, len(e) - 1)
+        return (float(np.polyval(np.polyfit(e, [p["dn_min"] for p in pts], deg), dw)),
+                float(np.polyval(np.polyfit(e, [p["dn_det"] for p in pts], deg), dw)))
+
+    def _mode_row(self, d, dw, meta, t):
+        """One line of the field checks, next to the two-mode model of the tolerance step.
+
+        In two-mode coupled-mode theory the upper supermode's access share s fixes the
+        detuning, dn_det = (1 - 2 s) dn_s (= n_bus - n_access; > 0: the bus is too wide),
+        and the largest convertible power, 4 s (1 - s). At the nominal coupler length L_c:
+            eta = 4 s (1 - s) sin^2(pi dn_s L_c / lambda)
+        which is the tolerance step's formula with the mixing measured on the fields.
+        """
+        ck, md, wl = meta["checks"], meta["modes"], self.cfg["wavelength"]
+        s_u, dn_s = ck["upper"]["share"], meta["dn_s"]
+        eta = 4 * s_u * (1 - s_u) * np.sin(np.pi * dn_s * d["Lc"] / wl) ** 2
+        row = dict(m=d["m"], wa=d["wa"], dw=dw, file=f"modes/{meta['tag']}.npz", norm=meta["norm"],
+                   wb_star=d["wb_star"], wb_iso=d["wb_iso"], s_b=d["s_b"], Lc=d["Lc"],
+                   n_access=md["access"]["neff"], n_bus=md["bus"]["neff"],
+                   n_upper=md["upper"]["neff"], n_lower=md["lower"]["neff"],
+                   te_upper=md["upper"]["te"], te_lower=md["lower"]["te"], dn_s=dn_s,
+                   share_upper=s_u, share_lower=ck["lower"]["share"],
+                   residual_upper=ck["upper"]["residual"], residual_lower=ck["lower"]["residual"],
+                   bus_sign_upper=ck["upper"]["bus_sign"], bus_sign_lower=ck["lower"]["bus_sign"],
+                   dn_det_fields=(1 - 2 * s_u) * dn_s, eta_fields=float(eta),
+                   unconverted_fields_dB=float(to_dB(1 - eta)),
+                   tail_dB=meta["tail_dB"], edge_fraction=meta["edge_fraction"])
+        # Bus width at which the nominal coupler's supermodes would be an even mixture:
+        # W* moved by the detuning the fields show, over the bus slope dn/dW.
+        row["wb_even_fields"] = float(d["wb_star"] - row["dn_det_fields"] / d["s_b"]) if dw == 0 else float("nan")
+        dn_min, dn_det = self._model_at(t, dw) if t else (float("nan"), float("nan"))
+        dn_s_model = float(np.hypot(dn_min, dn_det))
+        eta_model = float(conversion(dn_min, dn_det, d["Lc"], wl))
+        row.update(dn_min_model=dn_min, dn_det_model=dn_det, dn_s_model=dn_s_model,
+                   share_model=0.5 * (1 - dn_det / dn_s_model) if dn_s_model > 0 else float("nan"),
+                   eta_model=eta_model,
+                   unconverted_model_dB=float(to_dB(1 - eta_model)) if np.isfinite(eta_model) else float("nan"))
+        return row
+
+    def _modes_report(self, rows):
+        """Summary of the field checks, and modes_summary.csv."""
+        fin = [r for r in rows if np.isfinite(r["share_model"])]
+        res = max(max(r["residual_upper"], r["residual_lower"]) for r in rows)
+        sign = all(r["bus_sign_upper"] > 0 and r["bus_sign_lower"] < 0 for r in rows)
+        print("\n  Is the coupling the intended two-mode coupling?")
+        print(f"    The two strip modes explain each supermode to within {100 * res:.2f} % of its field "
+              "(largest residual).")
+        if fin:
+            dn = max(abs(r["dn_s"] - r["dn_s_model"]) / r["dn_s_model"] for r in fin)
+            print(f"    Supermode splitting solved at the exact geometry against the anticrossing fit: "
+                  f"largest difference {100 * dn:.1f} %.")
+        print(f"    Upper supermode in phase and lower in anti-phase across the gap in every case: {sign}.")
+        print(f"    Lowest TE fraction of a supermode {min(min(r['te_upper'], r['te_lower']) for r in rows):.3f}; "
+              f"largest share of a field within 300 nm of the window walls "
+              f"{max(r['edge_fraction'] for r in rows):.1e}.")
+        nominal = [r for r in rows if r["dw"] == 0]
+        tails = {r["wa"]: r["tail_dB"] for r in nominal}
+        if tails:
+            print("  Why the coupling is stronger: |Ex|^2 of the access mode alone at the bus edge, "
+                  "relative to its peak:")
+            print("    " + ", ".join(f"{wa:.0f} nm: {v:.1f} dB" for wa, v in sorted(tails.items())))
+        if nominal:
+            print("  Phase matching of the nominal designs (dW = 0). The model assumes the upper supermode is")
+            print("  an even mixture (access share 0.5) at the anticrossing minimum W*. The fields give:")
+            print("    coupler  W_a   access share  unconverted   bus width (nm): anticrossing  isolated   "
+                  "even mixture")
+            print("                   (fields)      at L_c (dB)                   minimum W*    W_iso      (fields)")
+            for r in nominal:
+                print(f"    TE0-TE{r['m']}  {r['wa']:4.0f}     {r['share_upper']:5.3f}      "
+                      f"{r['unconverted_fields_dB']:6.1f}                     {r['wb_star']:7.1f}     "
+                      f"{r['wb_iso']:7.1f}     {r['wb_even_fields']:7.1f}")
+            print("    'even mixture' is W* moved by the detuning the fields show, dn_det = (1 - 2 share) dn_s,")
+            print("    divided by the bus slope dn/dW.")
+        if fin:
+            ds = max(abs(r["share_upper"] - r["share_model"]) for r in fin)
+            print(f"  Access share of the upper supermode, fields against the model: largest difference {ds:.3f}.")
+        else:
+            print("  No tolerance results: the fields were not compared with the two-mode model.")
+
+        path = os.path.join(self.out, "modes_summary.csv")
+        cols = [("coupler", lambda r: f"TE0-TE{r['m']}"), ("access_width_nm", lambda r: f"{r['wa']:g}"),
+                ("width_error_nm", lambda r: f"{r['dw']:g}"), ("n_upper", lambda r: f"{r['n_upper']:.5f}"),
+                ("n_lower", lambda r: f"{r['n_lower']:.5f}"),
+                ("dn_s_solved", lambda r: f"{r['dn_s']:.6f}"), ("dn_s_model", lambda r: f"{r['dn_s_model']:.6f}"),
+                ("access_share_upper_fields", lambda r: f"{r['share_upper']:.4f}"),
+                ("access_share_upper_model", lambda r: f"{r['share_model']:.4f}"),
+                ("access_share_lower_fields", lambda r: f"{r['share_lower']:.4f}"),
+                ("detuning_fields", lambda r: f"{r['dn_det_fields']:.6f}"),
+                ("detuning_model", lambda r: f"{r['dn_det_model']:.6f}"),
+                ("unconverted_at_Lc_fields_dB", lambda r: f"{r['unconverted_fields_dB']:.2f}"),
+                ("unconverted_at_Lc_model_dB", lambda r: f"{r['unconverted_model_dB']:.2f}"),
+                ("residual_upper", lambda r: f"{r['residual_upper']:.5f}"),
+                ("residual_lower", lambda r: f"{r['residual_lower']:.5f}"),
+                ("te_fraction_upper", lambda r: f"{r['te_upper']:.4f}"),
+                ("te_fraction_lower", lambda r: f"{r['te_lower']:.4f}"),
+                ("access_tail_at_bus_dB", lambda r: f"{r['tail_dB']:.2f}"),
+                ("edge_fraction", lambda r: f"{r['edge_fraction']:.2e}"),
+                ("bus_width_even_mixture_nm",
+                 lambda r: f"{r['wb_even_fields']:.1f}" if np.isfinite(r["wb_even_fields"]) else ""),
+                ("file", lambda r: r["file"])]
+        with open(path, "w") as f:
+            f.write(",".join(c for c, _ in cols) + "\n")
+            for r in rows:
+                f.write(",".join(fn(r) for _, fn in cols) + "\n")
+        print(f"  Mode summary table: {path}")
+
     def step_plots(self):
         import plots
         plots.make_all(self.res, self.cfg, self.out, self.s.name)
@@ -429,7 +686,7 @@ class Study:
         print(f"\nSummary table: {path}")
 
 
-STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "plots"]
+STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "modes", "plots"]
 
 
 def main():
@@ -450,7 +707,10 @@ def main():
     if args.access:
         cfg["access_widths"] = [float(w) for w in args.access.split(",")]
     steps = [s.strip() for s in args.steps.split(",") if s.strip()]
-    outdir = args.out or f"results_{args.backend}" + ("_quick" if args.quick else "")
+    # Default results folder next to this script, so the run finds earlier results
+    # (and its cache) wherever it is started from.
+    outdir = args.out or os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                      f"results_{args.backend}" + ("_quick" if args.quick else ""))
 
     if steps == ["plots"]:
         import plots

@@ -4,8 +4,9 @@ EMode2D backend. This is the only file that talks to EMode.
 Every call here is an EMode2D function (no EME, no FEM, nothing that needs an
 EMode3D licence). Two kinds of finite-difference mode (FDM) solve are used:
 
-    modes()      straight cross-section with one or two silicon strips
-    bend_loss()  one strip in a bend (cylindrical bend solver with a PML)
+    modes()        straight cross-section with one or two silicon strips
+    mode_fields()  the same solve, also returning the mode fields (x, y, Ex, Ey, Hx, Hy)
+    bend_loss()    one strip in a bend (cylindrical bend solver with a PML)
 
 The calls follow the EMode documentation, checked page by page (version 1.0.8):
 
@@ -14,6 +15,9 @@ The calls follow the EMode documentation, checked page by page (version 1.0.8):
   Solver analysis     FDM(verbose=False), refractive_index()
   File management     get('effective_index' | 'TE_fraction' | 'loss_dB_per_m' |
                       'BC' | 'PML_indices' | 'emode_version'), close()
+  Fields              get('x' | 'y' | 'Ex' | 'Ey' | 'Hx' | 'Hy'): x and y as in
+                      SiN_width_sweep.py, which reads them from EMode the same way;
+                      Hx and Hy are optional (the field keys stored in .eph files)
   Examples            'Straight Waveguide Convergence' (straight solves, '00' walls),
                       'Bend Mode Solvers', 'Bending: SiN' and 'Ring Resonator Design'
                       (bends), 'Scattering loss: Laser' (MaterialProperties)
@@ -113,17 +117,85 @@ class EModeSolver:
         te = self._read("TE_fraction")                    # documented as a fraction (0..1)
         return te / 100.0 if te.size and te.max() > 1.5 else te
 
+    @staticmethod
+    def _axis(values):
+        """A grid axis read from EMode ('x' or 'y') as a 1D float array in nm."""
+        a = np.real(np.asarray(values, dtype=complex)).astype(float)
+        if a.ndim > 1 and min(a.shape) > 1:              # a meshgrid: keep the distinct values
+            return np.unique(a.round(6))
+        return a.ravel()
+
+    @staticmethod
+    def _stack(raw, n_modes, nx, ny):
+        """One field component of every mode as an array (mode, x, y).
+
+        EMode returns a field as (mode, x, y) or (mode, y, x); a single mode may come
+        without the mode axis. The x and y lengths tell the layouts apart (the window
+        is never square here)."""
+        a = np.squeeze(np.asarray(raw))
+        if a.ndim == 2:
+            a = a[None]
+        if a.ndim != 3:
+            raise ValueError(f"field array of shape {np.shape(raw)}")
+        if a.shape[0] != n_modes and a.shape[-1] == n_modes:
+            a = np.moveaxis(a, -1, 0)
+        if a.shape[0] != n_modes:
+            raise ValueError(f"field array of shape {np.shape(raw)} for {n_modes} modes")
+        if a.shape[1:] == (nx, ny):
+            return a
+        if a.shape[1:] == (ny, nx):
+            return a.transpose(0, 2, 1)
+        raise ValueError(f"field array of shape {np.shape(raw)} on a {nx} x {ny} grid")
+
     # ---------------------------------------------------------------- interface
-    def modes(self, cores, wavelength, num_modes=8):
+    def modes(self, cores, wavelength, num_modes=8, frame=None):
         """Solve one straight cross-section.
 
         cores      : list of (x_centre_nm, width_nm) silicon strips, all h_si thick
         wavelength : nm
+        frame      : strips that set the window (default: cores). Giving a coupler's two
+                     strips here while solving only one of them puts that strip on the
+                     coupler's grid, so their fields can be compared point by point.
         Returns (n_eff, TE_fraction) as arrays sorted by decreasing n_eff.
         """
+        neff, te, order, _, _ = self._straight(cores, wavelength, num_modes, frame)
+        return neff[order], te[order]
+
+    def mode_fields(self, cores, wavelength, num_modes=8, frame=None):
+        """Like modes(), and also returns the mode fields.
+
+        Returns (n_eff, TE_fraction, fields), sorted by decreasing n_eff. `fields` holds
+        x and y (1D, nm, in the caller's coordinates: the strips at their given x, the
+        silicon from -h_si/2 to +h_si/2) and Ex, Ey, Hx, Hy as arrays (mode, x, y) in
+        EMode's units. Hx and Hy are left out if EMode does not return them.
+        Reads get('x'), get('y') and get('Ex' | 'Ey' | 'Hx' | 'Hy'), the calls that
+        SiN_width_sweep.py already uses with EMode.
+        """
+        neff, te, order, shift, window_height = self._straight(cores, wavelength, num_modes, frame)
+        x = self._axis(self.em.get("x")) - shift
+        y = self._axis(self.em.get("y")) - window_height / 2
+        fields, missing = dict(x=x, y=y), []
+        for comp in ("Ex", "Ey", "Hx", "Hy"):
+            try:
+                fields[comp] = self._stack(self.em.get(comp), len(neff), x.size, y.size)[order]
+            except Exception as err:
+                if comp in ("Ex", "Ey"):
+                    raise RuntimeError(f"could not read {comp} from EMode: {err}") from err
+                missing.append(comp)
+        self.last["fields_missing"] = missing
+        return neff[order], te[order], fields
+
+    def _straight(self, cores, wavelength, num_modes, frame=None):
+        """Set up and solve one straight cross-section (see modes()).
+
+        Returns the raw EMode results (n_eff, TE_fraction), the order that sorts them
+        by decreasing n_eff, and the shift and window height that map EMode's
+        coordinates to the caller's: x_caller = x - shift, y_caller = y - height/2.
+        """
         em, res = self.em, self.resolution
-        x_min = min(c - w / 2 for c, w in cores)
-        x_max = max(c + w / 2 for c, w in cores)
+        frame = frame or cores
+        x_min = min(c - w / 2 for c, w in frame)
+        x_max = max(c + w / 2 for c, w in frame)
         # Centre the structure on x = 0. The shift is a whole number of cells, so
         # walls that lie on the grid in the caller's coordinates stay on the grid.
         shift = -res * round((x_min + x_max) / 2 / res)
@@ -153,8 +225,7 @@ class EModeSolver:
         te = self._te_fraction()
         self.last = dict(kind="straight", window_width=window_width, window_height=window_height,
                          boundary_condition=self._read_optional("BC"), modes_found=len(neff))
-        order = np.argsort(-neff)
-        return neff[order], te[order]
+        return neff, te, np.argsort(-neff), shift, window_height
 
     def bend_loss(self, width, radius, wavelength, n_guess=None):
         """Fundamental TE mode of one strip bent to `radius` (nm, at the core centre).
