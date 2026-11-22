@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 import modefields
 import plots
-from plots import COUPLER, INK, INK2, SURFACE, _field_panel, _ramp
+from plots import COUPLER, _field_panel
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMODE = os.path.join(HERE, "results_emode")
@@ -66,9 +66,8 @@ def fig_tradeoff(res):
               ("(c) Coupling over mismatch", "$\\Delta n_{min}/(S_a - S_m)$ (nm)", lambda d: d["fom_nm"])]
     for ax, (title, ylab, f) in zip(axes, panels):
         for m in (1, 2):
-            name, col = COUPLER[m]
             ds = sorted((d for d in res["design"] if d["m"] == m), key=lambda d: d["wa"])
-            ax.plot([d["wa"] for d in ds], [f(d) for d in ds], "o-", color=col, label=name)
+            ax.plot([d["wa"] for d in ds], [f(d) for d in ds], "o-", color=f"C{m - 1}", label=COUPLER[m])
         panel_label(ax, title)
         ax.set_xlabel("Access width $W_a$ (nm)")
         ax.set_ylabel(ylab)
@@ -82,30 +81,31 @@ def fig_tradeoff(res):
 def fig_tolerance(res):
     """(a, b) unconverted power against width error; (c) tolerance against access width."""
     lim = -15.0
-    ramp = _ramp(sorted({t["wa"] for t in res["tolerance"]}))
+    widths = sorted({t["wa"] for t in res["tolerance"]})
     fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.85), gridspec_kw=dict(width_ratios=[1, 1, 1.05]))
     for ax, m, tag in ((axes[0], 1, "(a)"), (axes[1], 2, "(b)")):
         for t in sorted((t for t in res["tolerance"] if t["m"] == m), key=lambda t: t["wa"]):
-            ax.plot(t["dw"], t["residual_dB"], color=ramp[t["wa"]], label=f"{t['wa']:.0f} nm")
+            col = f"C{widths.index(t['wa'])}"
+            ax.plot(t["dw"], t["residual_dB"], color=col, label=f"{t['wa']:.0f} nm")
             ax.plot([p["dw"] for p in t["points"]],
-                    [10 * np.log10(max(1 - p["eta"], 1e-6)) for p in t["points"]], "o", color=ramp[t["wa"]], ms=3.6)
-        ax.axhline(lim, color=INK2, lw=0.8, ls=(0, (4, 3)))
+                    [10 * np.log10(max(1 - p["eta"], 1e-6)) for p in t["points"]], "o", color=col, ms=3.6)
+        ax.axhline(lim, color="k", lw=0.8, ls=(0, (4, 3)))
         ax.set_ylim(-40, 0)
         ax.set_xlim(-20.5, 20.5)
         ax.set_xticks([-20, -10, 0, 10, 20])
         ax.set_xlabel("Width error $\\Delta W$ (nm)")
-        panel_label(ax, f"{tag} {COUPLER[m][0]}")
+        panel_label(ax, f"{tag} {COUPLER[m]}")
     axes[0].set_ylabel("Unconverted power at $L_c$ (dB)")
     axes[1].legend(title="$W_a$", loc="lower right", fontsize=6, title_fontsize=6.4, ncol=1, handlelength=1.2,
                    labelspacing=0.25, borderaxespad=0.2)
     ax = axes[2]
     for m in (1, 2):
-        name, col = COUPLER[m]
+        name, col = COUPLER[m], f"C{m - 1}"
         ts = sorted((t for t in res["tolerance"] if t["m"] == m), key=lambda t: t["wa"])
         ds = {d["wa"]: d for d in res["design"] if d["m"] == m}
         wa = [t["wa"] for t in ts]
         ax.plot(wa, [t["tol"] for t in ts], "o-", color=col, label=f"{name}, re-solved")
-        ax.plot(wa, [ds[w]["tol_cmt"] for w in wa], "s", ls=(0, (3, 2)), color=col, mfc=SURFACE, mec=col,
+        ax.plot(wa, [ds[w]["tol_cmt"] for w in wa], "s", ls=(0, (3, 2)), color=col, mfc="none",
                 label=f"{name}, first order")
     panel_label(ax, "(c) Tolerance at $-$15 dB")
     ax.set_xlabel("Access width $W_a$ (nm)")
@@ -122,8 +122,8 @@ def fig_modes(res):
     rows = [(1, 320), (1, 480), (2, 320)]
     sets = [modefields.load(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
     info = {(r["m"], r["wa"]): r for r in res["modes"] if r["dw"] == 0}
-    xlim, ylim = plots._extent(sets, margin=380)
-    ylim = (-110 - 300, 110 + 300)
+    views = [xlim for xlim, _ in plots._views([[s] for s in sets], margin=380)]
+    xlim, ylim = views[0], (-110 - 300, 110 + 300)
     pw = (TEXTWIDTH - 1.25) / 4
     ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
     fig, axes, cax = plots._field_grid(len(rows), 4, pw, ph, left=0.82, right=0.55, top=0.2, bottom=0.05,
@@ -131,7 +131,7 @@ def fig_modes(res):
     cols = [("access", "Access strip alone"), ("bus", "Bus strip alone"),
             ("upper", "Upper supermode"), ("lower", "Lower supermode")]
     for i, ((m, wa), data) in enumerate(zip(rows, sets)):
-        r = info[(m, wa)]
+        r, xlim = info[(m, wa)], views[i]
         for j, (name, title) in enumerate(cols):
             ax = axes[i, j]
             im = _field_panel(ax, data, name, xlim, ylim)
@@ -140,19 +140,20 @@ def fig_modes(res):
             label = f"{data['modes'][name]['neff']:.3f}"
             if name in ("upper", "lower"):
                 label += f", {100 * r['share_' + name]:.0f} %"
-            ax.text(0.02, 0.94, label, transform=ax.transAxes, va="top", ha="left", fontsize=6.2, color=INK)
+            ax.text(0.02, 0.94, label, transform=ax.transAxes, va="top", ha="left", fontsize=6.2, color="white")
             if i == 0:
                 ax.set_title(title, fontsize=7.2, fontweight="bold", loc="left")
         wb = data["meta"]["cores"][1][1]
-        axes[i, 0].text(-0.04, 0.5, f"{COUPLER[m][0]}\n$W_a$ {wa} nm\nbus {wb:.0f} nm", transform=axes[i, 0].transAxes,
-                        ha="right", va="center", fontsize=6.4, color=INK2, linespacing=1.15)
+        axes[i, 0].text(-0.04, 0.5, f"{COUPLER[m]}\n$W_a$ {wa} nm\nbus {wb:.0f} nm", transform=axes[i, 0].transAxes,
+                        ha="right", va="center", fontsize=6.4, linespacing=1.15)
     plots._scale_bar(axes[-1, 0], xlim, ylim, length=500)
     for t in axes[-1, 0].texts[-1:]:
         t.set_fontsize(5.8)
-    cb = fig.colorbar(im, cax=cax, ticks=[-1, 0, 1])
-    cb.set_label("Re$(E_x)$, scaled to peak", color=INK2, fontsize=6.4)
+    cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1])
+    cb.set_label("$|E_x|$, scaled to peak", fontsize=6.4)
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0, labelsize=6.2)
+    cb.ax.grid(False)
     save(fig, "report_modes.pdf")
 
 
@@ -160,19 +161,18 @@ def fig_fieldchecks(res):
     """(a) access-mode tail, (b) W* against the phase-matched width, (c) coupler at W*."""
     nominal = [r for r in res["modes"] if r["dw"] == 0]
     gap = 200
-    ramp = _ramp(sorted({r["wa"] for r in nominal}))
     fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.76))
     ax = axes[0]
-    for wa in sorted(ramp):
+    for k, wa in enumerate(sorted({r["wa"] for r in nominal})):
         data = modefields.load(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
         x, y = data["x"], data["y"]
         j = int(np.argmin(np.abs(y)))
         ex2 = np.abs(np.real(data["modes"]["access"]["Ex"][:, j])) ** 2
         u = x - wa / 2
         keep = (u >= 0) & (u <= gap + 350)
-        ax.plot(u[keep], 10 * np.log10(ex2[keep] / ex2.max() + 1e-12), color=ramp[wa], label=f"{wa:g} nm")
-    ax.axvspan(gap, gap + 350, color="#efeeea", zorder=0, lw=0)
-    ax.text(gap + 10, -1.2, "bus", ha="left", va="top", fontsize=6.4, color=INK2)
+        ax.plot(u[keep], 10 * np.log10(ex2[keep] / ex2.max() + 1e-12), color=f"C{k}", label=f"{wa:g} nm")
+    ax.axvspan(gap, gap + 350, alpha=0.1, lw=0, zorder=0)
+    ax.text(gap + 10, -1.2, "bus", ha="left", va="top", fontsize=6.4)
     ax.set_xlim(0, gap + 350)
     ax.set_ylim(-35, 1)
     ax.set_xlabel("Distance from access wall (nm)")
@@ -182,12 +182,12 @@ def fig_fieldchecks(res):
               labelspacing=0.2, borderaxespad=0.2)
     ax = axes[1]
     for m in (1, 2):
-        name, col = COUPLER[m]
+        name, col = COUPLER[m], f"C{m - 1}"
         sel = sorted((r for r in nominal if r["m"] == m), key=lambda r: r["wa"])
         wa = [r["wa"] for r in sel]
         ax.plot(wa, [r["wb_star"] - r["wb_even_fields"] for r in sel], "o-", color=col, label=f"{name}, fields")
-        ax.plot(wa, [r["wb_star"] - r["wb_iso"] for r in sel], "s", ls=(0, (3, 2)), color=col, mfc=SURFACE,
-                mec=col, label=f"{name}, $n_a = n_m$")
+        ax.plot(wa, [r["wb_star"] - r["wb_iso"] for r in sel], "s", ls=(0, (3, 2)), color=col, mfc="none",
+                label=f"{name}, $n_a = n_m$")
     ax.set_ylim(bottom=0)
     ax.set_xticks([320, 360, 400, 440, 480])
     ax.set_xlabel("Access width $W_a$ (nm)")
@@ -196,10 +196,10 @@ def fig_fieldchecks(res):
     ax.legend(loc="upper right", fontsize=5.8, handlelength=2.0, labelspacing=0.2)
     ax = axes[2]
     for m in (1, 2):
-        name, col = COUPLER[m]
         sel = sorted((r for r in nominal if r["m"] == m), key=lambda r: r["wa"])
-        ax.plot([r["wa"] for r in sel], [r["unconverted_fields_dB"] for r in sel], "o-", color=col, label=name)
-    ax.axhline(-15, color=INK2, lw=0.8, ls=(0, (4, 3)))
+        ax.plot([r["wa"] for r in sel], [r["unconverted_fields_dB"] for r in sel], "o-", color=f"C{m - 1}",
+                label=COUPLER[m])
+    ax.axhline(-15, color="k", lw=0.8, ls=(0, (4, 3)))
     ax.set_ylim(-26, -8)
     ax.set_xticks([320, 360, 400, 440, 480])
     ax.set_xlabel("Access width $W_a$ (nm)")

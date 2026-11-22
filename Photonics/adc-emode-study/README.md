@@ -183,8 +183,10 @@ d["meta"]["cores"], d["meta"]["checks"] # strip positions and widths; share, res
 
 The names are `access`, `bus`, `upper`, `lower`. The access mode has Ex > 0 at the
 centre of its strip, the bus mode in its lobe next to the gap, and each supermode's
-access part is in phase with the access mode. So in the plots, a positive bus lobe
-next to the gap means the two strips oscillate in phase.
+access part is in phase with the access mode. So in the saved Re(Ex), a positive bus
+lobe next to the gap means the two strips oscillate in phase. The figures draw |Ex|
+instead, where a sign change shows as a dark line: an anti-phase supermode has one in
+the gap.
 
 ## Figures
 
@@ -202,6 +204,12 @@ next to the gap means the two strips oscillate in phase.
 | `fig11_mode_checks` | Access-mode tail at the bus, two-mode residual, and how far W* is from the phase-matched bus width. |
 | `fig12_tolerance_fields` | Unconverted power against width error: the model of step 3 (lines) and the fields (dots). |
 | `fig13_tolerance_matched` | Tolerance with the bus at W* (model) and at the phase-matched width (fields). |
+
+The mode maps (figures 8 to 10 and the report's mode figure) use EMode's own colour
+scale, matplotlib's `plasma` as in EMode's `plot()`: |Ex| with each mode scaled to its
+own peak, dark where there is no field, and the silicon outlined in white. All other
+figures use matplotlib's default colours: C0 for TE0→TE1, C1 for TE0→TE2, and one default
+colour per access width.
 
 ## Results (EMode2D, 10 nm grid, `results_emode/`)
 
