@@ -1,5 +1,6 @@
-"""The 'modes' step through the EMode code path (test double of emodeconnection), and the
-helpers in modefields.py. Tests the Python, not EMode's numbers.
+"""The 'modes' and 'matched' steps through the EMode code path, and the helpers in
+modefields.py. The test double of emodeconnection answers with a made-up coupled-mode
+model (no mode solver), so this tests the Python, not EMode's numbers.
 
     python tests/test_modes_step.py
 """
@@ -18,20 +19,24 @@ import adc_study  # noqa: E402
 import modefields as mf  # noqa: E402
 import plots  # noqa: E402
 from solver_emode import EModeSolver  # noqa: E402
-from solver_empy import EMpySolver  # noqa: E402
 
 # 1. Helpers. Cell sizes add up to the span of the grid, uniform or not.
 for x in (np.arange(5.0, 100, 10), np.array([0.0, 10, 30, 35, 60])):
     assert abs(mf.cell_sizes(x).sum() - (x[-1] - x[0] + (x[1] - x[0]) / 2 + (x[-1] - x[-2]) / 2)) < 1e-9
 
 # 2. A symmetric coupler's supermodes are exactly even mixtures of the two strip modes.
-s = EMpySolver(resolution=20)
+s = EModeSolver(resolution=20)
 pair = [(0.0, 400.0), (600.0, 400.0)]
 nc, tc, fc = s.mode_fields(pair, 1550, 6)
 na, ta, fa = s.mode_fields(pair[:1], 1550, 6, frame=pair)
 nb, tb, fb = s.mode_fields(pair[1:], 1550, 6, frame=pair)
 w = mf.weights(fc["x"], fc["y"])
-pick = lambda f, i: mf.normalised({c: f[c][i] for c in ("Ex", "Ey", "Hx", "Hy")}, w)
+
+
+def pick(f, i):
+    return mf.normalised({c: f[c][i] for c in ("Ex", "Ey", "Hx", "Hy")}, w)
+
+
 A, B = pick(fa, 0), pick(fb, 0)
 for i in (0, 1):
     _, _, share, residual = mf.decompose(pick(fc, i), A, B, w)
@@ -80,7 +85,7 @@ print(f"matched: W* {m0['wb_star']:.1f} -> W_pm {m0['wb_pm']:.1f} nm, share {m0[
       f"tolerance +/-{m0['tol']:.2f} nm (model at W* +/-{m0['tol_model']:.2f})")
 
 # 6. The figures render from the saved results.
-plots.make_all(st.res, cfg, out, "emode")
+plots.make_all(st.res, cfg, out)
 for name in ("fig8_modes_TE0-TE1", "fig10_supermodes_width_error", "fig11_mode_checks", "fig12_tolerance_fields",
              "fig13_tolerance_matched"):
     assert os.path.exists(os.path.join(out, name + ".png")), name

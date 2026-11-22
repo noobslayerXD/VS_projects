@@ -1,10 +1,11 @@
-"""Test double for the emodeconnection package (NOT EMode).
+"""Test double for the emodeconnection package. It is NOT EMode and NOT a mode solver.
 
 It accepts exactly the keyword arguments that the EMode 1.0.8 documentation lists
-(unknown keywords raise, as EMode does since 1.0.7), applies the documented
-conventions, and answers straight solves with the open-source EMpy solver. It lets
-the Python logic of solver_emode.py be exercised without an EMode licence. It says
-nothing about EMode's numerical accuracy.
+(unknown keywords raise, as EMode does since 1.0.7) and applies the documented
+conventions, so that the Python of solver_emode.py and adc_study.py can be run
+without an EMode licence. The numbers it returns come from the made-up coupled-mode
+model below: smooth, phase-matchable and self-consistent, but not physical results.
+None of the study's results come from it.
 
 Documented conventions it enforces:
   - origin at the horizontal centre of the bottom wall; x in [-W/2, W/2], y in [0, H]
@@ -19,22 +20,25 @@ Documented conventions it enforces:
     swaps the last two axes, to check that the solver does not depend on it; GIVE_H =
     False makes a request for H fail. Reading x, y or a field through get() raises, as
     those keys are deprecated in EMode.
+
+Made-up model (only for testing):
+  - a strip of width W has guided modes p = 0, 1, 2, ... of each polarization with
+        n_p^2 = n_slab^2 - ((p + 1) lambda / (2 (W + D)))^2,   D = 100 nm,
+    n_slab = n_clad + 0.69 (n_core - n_clad) for TE and + 0.27 (n_core - n_clad) for TM,
+    kept while n_p > n_clad;
+  - its field is a Hermite-Gaussian with p nodes across x (sigma = (W + D)/3) and a
+    Gaussian across y (sigma = 150 nm), along x for TE and along y for TM, with
+    H = n_eff z x E, so that every mode carries positive power;
+  - modes of the same polarization in two strips couple with strength
+        c = 0.02 exp(-(g - 200 nm) / 100 nm)
+    (g the gap), signed like the product of the two fields in the middle of the gap,
+    and the supermodes are the eigenvectors of diag(n) + C;
+  - unguided "box" modes with zero fields fill the list up to num_modes.
 """
 import math
-import os
-import sys
-
 from types import SimpleNamespace
 
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-
-_here = os.path.dirname(os.path.abspath(__file__))
-for _study in (os.path.join(_here, "..", ".."), os.path.join(_here, "..", "..", "adc-emode-study")):
-    if os.path.exists(os.path.join(_study, "solver_empy.py")):   # tests/ inside or beside the study folder
-        sys.path.insert(0, os.path.abspath(_study))
-        break
-from solver_empy import EMpySolver, n_sio2  # noqa: E402
 
 CONSTRUCTOR = {"simulation_name", "license_type", "clear", "save_path", "verbose", "roaming",
                "open_existing", "new_name", "priority", "emode_cmd", "force_open", "save"}
@@ -59,30 +63,48 @@ SHAPE = {"profile", "name", "material", "fill_material", "loss_dB_per_m", "shape
 FDM_ARGS = {"profile", "section", "propagation_distance", "mode_filter", "fLanczos", "solve_type",
             "include_heat", "include_static", "scattering", "verbose", "simulation_name"}
 BOUNDARY = {"auto", "TE", "TM", "TE-h", "TM-h", "TE-v", "TM-v"} | {a + b for a in "0SA" for b in "0SA"}
-CALLS = []                                         # log of calls, for the test script
-SHIFT = 0.05                                       # bend shift factor; the test raises it
-FIELD_LAYOUT = "xy"                                # Field array [field, mode, x, y] as documented, or "yx": [.., y, x]
-GIVE_H = True                                      # False: get_fields with Hx or Hy fails
 DEPRECATED = {"x", "y", "Ex", "Ey", "Ez", "Hx", "Hy", "Hz", "Sx", "Sy", "Sz"}
 GRID_ARGS = {"include_expand", "include_pml", "unfold", "profile", "simulation_name"}
 
+CALLS = []                 # log of calls, for the test scripts
+SHIFT = 0.05               # bend: made-up outward shift of the mode; a test raises it
+FIELD_LAYOUT = "xy"        # Field array [field, mode, x, y] as documented, or "yx": [field, mode, y, x]
+GIVE_H = True              # False: get_fields with Hx or Hy fails
 
-def _window_fields(f, W, H, res, y_core):
-    """EMpy fields interpolated onto the cell centres of EMode's window (zero outside
-    EMpy's smaller domain), modes in reverse n_eff order like effective_index below."""
-    xe = np.arange(-W / 2 + res / 2, W / 2, res)
-    ye = np.arange(res / 2, H, res)
-    X, Y = np.meshgrid(xe, ye - y_core, indexing="ij")
-    out = dict(x=xe, y=ye)
-    for comp in ("Ex", "Ey", "Hx", "Hy"):
-        stack = []
-        for a in f[comp][::-1]:
-            part = [RegularGridInterpolator((f["x"], f["y"]), p, bounds_error=False, fill_value=0.0)((X, Y))
-                    for p in (a.real, a.imag)]
-            v = part[0] + 1j * part[1]
-            stack.append(v if FIELD_LAYOUT == "xy" else v.T)
-        out[comp] = np.array(stack)
+N_SI = 3.476               # made-up silicon index (database name 'Si')
+D_PEN = 100.0              # nm, made-up penetration added to the strip width
+SIGMA_Y = 150.0            # nm, vertical width of the made-up fields
+C0, G0, L_GAP = 0.02, 200.0, 100.0   # coupling c = C0 exp(-(g - G0) / L_GAP), index units
+
+
+def n_sio2(wl_nm):
+    """Fused silica (Malitson Sellmeier fit)."""
+    L2 = (wl_nm * 1e-3) ** 2
+    return math.sqrt(1 + 0.6961663 * L2 / (L2 - 0.0684043**2) + 0.4079426 * L2 / (L2 - 0.1162414**2)
+                     + 0.8974794 * L2 / (L2 - 9.896161**2))
+
+
+def strip_modes(width, n_core, n_clad, wl):
+    """Guided modes of one strip in the made-up model: list of (n_eff, polarization, order)."""
+    out = []
+    for pol, frac in (("TE", 0.69), ("TM", 0.27)):
+        n_slab = n_clad + frac * (n_core - n_clad)
+        p = 0
+        while True:
+            n2 = n_slab**2 - ((p + 1) * wl / (2 * (width + D_PEN)))**2
+            if n2 <= n_clad**2:
+                break
+            out.append((math.sqrt(n2), pol, p))
+            p += 1
     return out
+
+
+def _profile(x, y, xc, width, order):
+    """Hermite-Gaussian with `order` nodes across x, Gaussian across y; unit L2 norm."""
+    u = (x - xc) / ((width + D_PEN) / 3)
+    fx = np.polynomial.hermite.hermval(u, [0] * order + [1]) * np.exp(-u**2 / 2)
+    f = np.outer(fx, np.exp(-(y / SIGMA_Y)**2 / 2))
+    return f / np.sqrt((f**2).sum())
 
 
 def _check(kw, allowed, fn):
@@ -96,11 +118,18 @@ class MaterialProperties:
         self.n, self.mu = n, mu
 
 
+def _index(material, wl):
+    if isinstance(material, MaterialProperties):
+        return float(material.n)
+    return {"Si": N_SI, "SiO2": n_sio2(wl)}[material]
+
+
 class EMode:
     def __init__(self, **kw):
         _check(kw, CONSTRUCTOR, "EMode")
         assert kw.get("license_type", "default") in ("2d", "3d", "default")
         self.s, self.shapes, self.out, self.fields = dict(SETTINGS_DEFAULTS), {}, {}, {}
+        self.materials = None
         CALLS.append(("EMode", kw))
 
     def settings(self, **kw):
@@ -123,33 +152,28 @@ class EMode:
         self.out, self.fields = {}, {}
 
     def refractive_index(self, material, wavelength=1550, reference=False):
-        n = material.n if isinstance(material, MaterialProperties) else {"SiO2": float(n_sio2(wavelength))}[material]
+        n = _index(material, wavelength)
         return [n, n, n]
 
     def FDM(self, **kw):
         _check(kw, FDM_ARGS, "FDM")
         s, res = self.s, self.s["x_resolution"]
-        W, H = s["window_width"], s["window_height"]
+        W, H, wl = s["window_width"], s["window_height"], s["wavelength"]
         assert isinstance(res, (int, float)) and s["boundary_condition"] != "auto"
         for L in (W, H):                                  # whole even number of cells
             assert abs(L / res / 2 - round(L / res / 2)) < 1e-9, f"window {L} not an even cell count at {res}"
-        cores, h = [], None
+        cores = []
         for v in self.shapes.values():
             x, y = v["position"]
             assert -W / 2 <= x - v["width"] / 2 and x + v["width"] / 2 <= W / 2, "core outside window in x"
             assert 0 <= y - v["height"] / 2 and y + v["height"] / 2 <= H, "core outside window in y"
             cores.append((x, v["width"]))
-            h = v["height"]
         centred = all(abs(v["position"][1] - H / 2) < 1e-9 for v in self.shapes.values())
         bc = s["boundary_condition"]
         self.out["BC"] = bc if (bc not in ("TE", "TM") or centred) else "00"
-
-        mat = next(iter(self.shapes.values()))["material"]
-        clad = s["background_material"]
-        fixed = (mat.n, clad.n) if isinstance(mat, MaterialProperties) else None
-        side = min(1000, W / 2 - max(abs(c) + w / 2 for c, w in cores))
-        solver = EMpySolver(resolution=res, h_si=h, side_margin=side, vert_margin=min(800, (H - h) / 2))
-        solver.fixed_indices = fixed
+        n_core = _index(next(iter(self.shapes.values()))["material"], wl)
+        n_clad = _index(s["background_material"], wl)
+        self.materials = (n_core, n_clad)
 
         if s["bend_radius"]:
             R_set = s["bend_radius"]
@@ -157,8 +181,7 @@ class EMode:
             assert s["pml_NSEW_bool"][2] == 1, "the outer (east) wall needs a PML"
             (xc, w), = cores
             R_core = R_set + xc                           # xc < 0: core west of the window centre
-            neff, te = solver.modes([(0.0, w)], s["wavelength"], 2)
-            n_straight = float(neff[te > 0.5][0])
+            n_straight = strip_modes(w, n_core, n_clad, wl)[0][0]
             n_true = n_straight * (1 + SHIFT * w / R_core)  # made-up outward shift of the mode
             loss_true = 1e3 * math.exp(-R_core / 2000.0)  # made-up bend loss, dB/m along the core
             n_win, loss_win = n_true * R_core / R_set, loss_true * R_core / R_set
@@ -170,19 +193,61 @@ class EMode:
             self.truth = dict(n_core=n_true, loss_core=loss_true)
         else:
             assert s["pml_NSEW_bool"] == [0, 0, 0, 0] and s["max_effective_index"] == 0
-            neff, te, f = solver.mode_fields(cores, s["wavelength"], s["num_modes"])
-            self.out.update(effective_index=list(neff[::-1]), TE_fraction=list(te[::-1]),
-                            loss_dB_per_m=[0.0] * len(neff))   # unsorted on purpose
             y_core = next(iter(self.shapes.values()))["position"][1]
-            self.fields = _window_fields(f, W, H, res, y_core)
+            self._straight(cores, n_core, n_clad, wl, W, H, res, y_core, s["num_modes"])
         CALLS.append(("FDM", dict(BC=self.out["BC"], W=W, H=H, res=res)))
         return {"n_eff_tilde": self.out["effective_index"], "TE_fraction": self.out["TE_fraction"]}
+
+    def _straight(self, cores, n_core, n_clad, wl, W, H, res, y_core, num_modes):
+        """Supermodes of the made-up model on the window's cell centres."""
+        xe = np.arange(-W / 2 + res / 2, W / 2, res)
+        ye = np.arange(res / 2, H, res)
+        basis = []                                        # (n, polarization, field, strip)
+        for k, (xc, w) in enumerate(sorted(cores)):
+            for n, pol, p in strip_modes(w, n_core, n_clad, wl):
+                basis.append((n, pol, _profile(xe, ye - y_core, xc, w, p), k))
+        ham = np.diag([b[0] for b in basis])
+        if len(cores) == 2:
+            (x1, w1), (x2, w2) = sorted(cores)
+            gap = (x2 - w2 / 2) - (x1 + w1 / 2)
+            c = C0 * math.exp(-(gap - G0) / L_GAP)
+            ig = int(np.argmin(np.abs(xe - (x1 + w1 / 2 + gap / 2))))
+            jg = int(np.argmin(np.abs(ye - y_core)))
+            for i, bi in enumerate(basis):
+                for j, bj in enumerate(basis):
+                    if bi[3] == 0 and bj[3] == 1 and bi[1] == bj[1]:
+                        sign = np.sign(bi[2][ig, jg] * bj[2][ig, jg]) or 1.0
+                        ham[i, j] = ham[j, i] = c * sign
+        vals, vecs = np.linalg.eigh(ham)
+        modes = []
+        for k in np.argsort(-vals)[:num_modes]:
+            ex = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TE")
+            ey = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TM")
+            ex = ex if isinstance(ex, np.ndarray) else np.zeros((xe.size, ye.size))
+            ey = ey if isinstance(ey, np.ndarray) else np.zeros((xe.size, ye.size))
+            te = float((ex**2).sum() / ((ex**2).sum() + (ey**2).sum()))
+            modes.append((float(vals[k]), te, ex, ey))
+        while len(modes) < num_modes:                     # unguided box modes
+            z = np.zeros((xe.size, ye.size))
+            modes.append((n_clad - 0.01 * (len(modes) + 1), 0.5, z, z))
+        modes = modes[::-1]                               # unsorted on purpose
+        self.out.update(effective_index=[m[0] for m in modes], TE_fraction=[m[1] for m in modes],
+                        loss_dB_per_m=[0.0] * len(modes))
+
+        def arrange(a):
+            return a if FIELD_LAYOUT == "xy" else a.T
+        self.fields = dict(
+            x=xe, y=ye,
+            Ex=np.array([arrange(m[2]) for m in modes]).astype(complex),
+            Ey=np.array([arrange(m[3]) for m in modes]).astype(complex),
+            Hx=np.array([arrange(-m[0] * m[3]) for m in modes]).astype(complex),
+            Hy=np.array([arrange(m[0] * m[2]) for m in modes]).astype(complex))
 
     def get(self, key, profile="_default", simulation_name="emode"):
         if key in DEPRECATED:
             raise RuntimeError(f"get('{key}') is deprecated: use get_grid() or get_fields()")
         if key == "emode_version":
-            return "mock"
+            return "test double"
         return self.out[key]
 
     def get_grid(self, **kw):
@@ -194,7 +259,7 @@ class EMode:
         _check(kw, GRID_ARGS, "get_fields")
         names = ["Ex", "Ey", "Hx", "Hy"] if key is None else ([key] if isinstance(key, str) else list(key))
         if not GIVE_H and {"Hx", "Hy"} & set(names):
-            raise RuntimeError("no H fields in this mock")
+            raise RuntimeError("no H fields in this test double")
         f = self.fields
         return SimpleNamespace(field=np.array([f[n] for n in names]), field_names=names,
                                num_modes=f["Ex"].shape[0], grid=self.get_grid())

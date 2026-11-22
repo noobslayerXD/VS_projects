@@ -120,12 +120,13 @@ def fig_design(res, cfg, outdir, note):
 
 def fig_tolerance_curves(res, cfg, outdir, note):
     lim = cfg["residual_limit_dB"]
-    ramp = _ramp(cfg["access_widths"])
+    ramp = _ramp(sorted({t["wa"] for t in res["tolerance"]}))
     fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.6), sharey=True)
     for ax, m in zip(axes, (1, 2)):
         for t in [t for t in res["tolerance"] if t["m"] == m]:
             ax.plot(t["dw"], t["residual_dB"], color=ramp[t["wa"]], label=f"{t['wa']:.0f} nm")
-            ax.plot([p["dw"] for p in t["points"]], [float(10 * np.log10(max(1 - p["eta"], 1e-6))) for p in t["points"]],
+            ax.plot([p["dw"] for p in t["points"]],
+                    [float(10 * np.log10(max(1 - p["eta"], 1e-6))) for p in t["points"]],
                     "o", color=ramp[t["wa"]], ms=5)
         ax.axhline(lim, color=INK2, lw=0.9, ls=(0, (4, 3)))
         ax.annotate(f"limit {lim:.0f} dB", (ax.get_xlim()[0], lim), xytext=(4, 3), textcoords="offset points",
@@ -134,7 +135,9 @@ def fig_tolerance_curves(res, cfg, outdir, note):
         ax.set_xlabel("Uniform width error ΔW (nm)")
         ax.set_ylim(-45, 0)
     axes[0].set_ylabel("Unconverted power (dB)")
-    axes[1].legend(title="Access width", loc="lower right", ncol=2)
+    used = [ax for ax in axes if ax.get_legend_handles_labels()[0]]
+    if used:
+        used[-1].legend(title="Access width", loc="lower right", ncol=2)
     fig.suptitle("Unconverted power against width error at fixed coupler length",
                  x=0.01, ha="left", fontsize=10, fontweight="bold")
     fig.tight_layout()
@@ -165,7 +168,7 @@ def fig_tolerance_summary(res, cfg, outdir, note):
 
 
 def fig_wavelength(res, cfg, outdir, note):
-    ramp = _ramp(cfg["access_widths"])
+    ramp = _ramp(sorted({w["wa"] for w in res["wavelength"]}))
     top = 1.08 * max(max(w["loss_dB"]) for w in res["wavelength"])
     fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.9), sharey=True)
     for ax, m in zip(axes, (1, 2)):
@@ -190,7 +193,7 @@ def fig_wavelength(res, cfg, outdir, note):
 def fig_bend(res, cfg, outdir, note):
     rows = [b for b in res["bend"] if np.isfinite(b["loss_dB_per_90deg"]) and b["loss_dB_per_90deg"] > 0]
     if not rows:
-        print("  no bend-loss data (this solver has no bend solver): fig7 skipped")
+        print("  no positive bend-loss data: fig7 skipped")
         return
     radii = sorted({b["radius"] for b in rows})
     cols = dict(zip(radii, [ORANGE, AQUA, BLUE]))
@@ -380,7 +383,8 @@ def fig_mode_checks(res, cfg, outdir, note):
     ax.set_xlabel("Distance from the access strip's wall (nm)")
     ax.set_ylabel("|E$_x$|$^2$ of the access mode alone (dB)")
     ax.set_title("Narrower access: stronger tail at the bus")
-    ax.legend(title="Access width", loc="upper right", fontsize=7.5, title_fontsize=8)
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(title="Access width", loc="upper right", fontsize=7.5, title_fontsize=8)
 
     ax = axes[1]                                          # two-mode residual
     for m in sorted({r["m"] for r in rows}):
@@ -420,11 +424,11 @@ def fig_tolerance_fields(res, cfg, outdir, note):
     if not rows or "tolerance" not in res:
         return
     lim = cfg["residual_limit_dB"]
-    ramp = _ramp(cfg["access_widths"])
+    ramp = _ramp(sorted({t["wa"] for t in res["tolerance"]}))
     fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.6), sharey=True)
     for ax, m in zip(axes, (1, 2)):
         for t in [t for t in res["tolerance"] if t["m"] == m]:
-            col = ramp.get(t["wa"], INK2)
+            col = ramp[t["wa"]]
             ax.plot(t["dw"], t["residual_dB"], color=col, lw=1.4, label=f"{t['wa']:.0f} nm")
             sel = sorted((r for r in rows if r["m"] == m and r["wa"] == t["wa"]), key=lambda r: r["dw"])
             ax.plot([r["dw"] for r in sel], [max(r["unconverted_fields_dB"], -45) for r in sel], "o",
@@ -476,9 +480,8 @@ def fig_tolerance_matched(res, cfg, outdir, note):
     _save(fig, outdir, "fig13_tolerance_matched.png", note)
 
 
-def make_all(res, cfg, outdir, backend):
-    note = {"emode": "EMode2D", "empy": "open-source cross-check solver (EMpy), not EMode"}.get(backend, backend)
-    note = f"Solver: {note} · grid {cfg['resolution']:g} nm"
+def make_all(res, cfg, outdir):
+    note = f"Solver: EMode2D · grid {cfg['resolution']:g} nm"
     print("\n[plots]")
     for need, fn in (("sweep", fig_phase_matching), ("design", fig_anticrossing), ("design", fig_design),
                      ("tolerance", fig_tolerance_curves), ("tolerance", fig_tolerance_summary),

@@ -1,5 +1,6 @@
 """Checks solver_emode.py against a test double of emodeconnection that accepts only
-the keyword arguments in the EMode 1.0.8 documentation. Tests the Python, not EMode.
+the keyword arguments in the EMode 1.0.8 documentation and answers with a made-up
+coupled-mode model (no mode solver). Tests the Python, not EMode's numbers.
 
     python tests/test_solver_emode.py
 """
@@ -8,10 +9,10 @@ import numpy as np
 here = os.path.dirname(os.path.abspath(__file__))
 study = next(p for p in (os.path.join(here, ".."), os.path.join(here, "..", "adc-emode-study"))
              if os.path.exists(os.path.join(p, "solver_emode.py")))   # tests/ inside or beside the study
-sys.path.insert(0, os.path.join(here, "mock_emode")); sys.path.insert(0, os.path.abspath(study))
+sys.path.insert(0, os.path.join(here, "mock_emode"))
+sys.path.insert(0, os.path.abspath(study))
 import emodeconnection as emc
 from solver_emode import EModeSolver
-from solver_empy import EMpySolver
 
 for res in (10, 20, 40):
     s = EModeSolver(resolution=res)
@@ -30,17 +31,20 @@ for res in (10, 20, 40):
               f"x_off={s.last['x_off']}, caustic={s.last['caustic_nm']:.0f}, BC={s.last['boundary_condition']}")
     # bend without n_guess
     s.bend_loss(400, 3000, 1550)
-    # fixed indices (Dai benchmark path) gives the same as the EMpy backend with fixed indices
+    # fixed indices (Dai benchmark path): EMode must get MaterialProperties with exactly these
     s.fixed_indices = (3.455, 1.445)
     nf, _ = s.modes([(0.0, 400.0)], 1500, 4)
-    e = EMpySolver(resolution=res, side_margin=1000, vert_margin=800); e.fixed_indices = (3.455, 1.445)
-    ne, _ = e.modes([(0.0, 400.0)], 1500, 4)
-    assert abs(nf[0] - ne[0]) < 1e-6, (nf[0], ne[0])
+    assert s.em.materials == (3.455, 1.445), s.em.materials
+    assert abs(nf[0] - emc.strip_modes(400.0, 3.455, 1.445, 1500)[0][0]) < 1e-12
     s.fixed_indices = None
-    print(s.describe()[:40]); s.close()
+    print(s.describe()[:40])
+    s.close()
 
 # settings must not leak from a bend solve into the next straight solve
-s = EModeSolver(resolution=20); s.bend_loss(400, 3000, 1550, n_guess=2.2); s.modes([(0.0, 400.0)], 1550, 4)
+s = EModeSolver(resolution=20)
+s.bend_loss(400, 3000, 1550, n_guess=2.2)
+s.modes([(0.0, 400.0)], 1550, 4)
+assert s.last["kind"] == "straight" and s.last["boundary_condition"] == "00"
 print("no settings leak; all solver_emode checks passed")
 
 # a bend mode far above the straight index: the first solve finds nothing, the seeded retry must recover it

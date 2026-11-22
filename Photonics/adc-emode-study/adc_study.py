@@ -12,11 +12,13 @@ Method (2D cross-section mode solves only, so it runs in EMode2D)
 A coupler cross-section (access strip | gap | bus strip) has two "supermodes"
 that share power between the two strips. Their index difference is dn_s.
 
-1. Scan the bus width through the anticrossing. dn_s is smallest where the two
-   strips are phase matched:
+1. Scan the bus width through the anticrossing and fit
         dn_s(W_bus)^2 = dn_min^2 + [c * (W_bus - W_star)]^2
-   W_star is the phase-matched bus width, dn_min gives the coupling coefficient
-   kappa = pi*dn_min/lambda and the coupling length L_c = lambda/(2*dn_min).
+   W_star is the bus width of minimum splitting, dn_min gives the coupling
+   coefficient kappa = pi*dn_min/lambda and the coupling length
+   L_c = lambda/(2*dn_min). Steps 2 and 3 treat W_star as the phase-matched width;
+   the mode fields (step 4) show that it is wider than that when the coupling
+   changes with the bus width.
 2. For a coupler that is detuned (wrong width or wavelength) the converted power
    after a length L is (two-mode coupled-mode theory):
         eta = (dn_min/dn_s)^2 * sin^2(pi * dn_s * L / lambda)
@@ -27,23 +29,23 @@ that share power between the two strips. Their index difference is dn_s.
    the largest |dW| for which the unconverted power 1 - eta stays below -15 dB.
 4. Mode fields ('modes' step): the supermodes and the two strip modes are solved
    on one grid and saved, and each supermode is fitted with the two strip modes.
-   That checks the two-mode picture behind step 2 directly on the fields.
-5. Phase-matched couplers ('matched' step): the fields show that W* is wider than
-   the bus width at which the supermodes are an even mixture. Each coupler is
-   rebuilt with its bus at that width and its tolerance is taken from the fields.
+   That checks the two-mode picture behind step 2 directly on the fields, and gives
+   the bus width W_pm at which the supermodes are an even mixture (phase matching).
+5. Phase-matched couplers ('matched' step): each coupler is rebuilt with its bus at
+   W_pm and its tolerance is taken from the fields.
 
 Usage
 -----
     python adc_study.py --backend emode --steps check     # one solve, tests the EMode link
     python adc_study.py --backend emode --quick           # coarse first look (minutes)
     python adc_study.py --backend emode                   # full study
-    python adc_study.py --backend empy --quick            # open-source cross-check, no EMode
     python adc_study.py --backend emode --steps modes,plots   # add the mode fields to a finished run
     python adc_study.py --backend emode --steps matched,plots # tolerance with the bus at the phase-matched width
     python adc_study.py --backend emode --steps plots     # redraw figures from saved results
 
 Steps: check, sweep, design, tolerance, wavelength, bend, validate, modes, matched, plots.
-Results go to results_<backend>/ next to this script (or --out). Solved
+Every mode solve is done by EMode2D (solver_emode.py). Results go to
+results_emode/ next to this script (or --out). Solved
 cross-sections are cached in its cache.json, so a rerun only solves what is new.
 Delete that file to force new solves. Saved mode fields (modes/*.npz) are reused
 the same way.
@@ -402,7 +404,7 @@ class Study:
         saved = (self.s.side_margin, self.s.vert_margin, self.s.fixed_indices,
                  cfg["modes_single"], cfg["modes_coupled"])
         self.s.side_margin, self.s.vert_margin = 2000, 1500        # TM modes reach further out
-        self.s.fixed_indices = (p["n_si"], p["n_sio2"])            # the paper's constant indices (both backends)
+        self.s.fixed_indices = (p["n_si"], p["n_sio2"])            # the paper's constant indices
         cfg["modes_single"], cfg["modes_coupled"] = 12, 14
         try:
             n_a = self.n_iso(p["access"], p["wavelength"], 0, "TM")
@@ -603,12 +605,16 @@ class Study:
         out = []
         for d in self._designs():
             wb = even.get((d["m"], d["wa"]), d["wb_iso"])
-            for _ in range(3):                            # check, and correct at most twice
+            for attempt in range(3):                      # check; correct at most twice, then re-check
                 meta = self._matched_set(d, wb, 0.0)
                 s0 = meta["checks"]["upper"]["share"]
                 if abs(s0 - 0.5) <= 0.02:
                     break
-                wb -= (1 - 2 * s0) * meta["dn_s"] / d["s_b"]
+                if attempt < 2:
+                    wb -= (1 - 2 * s0) * meta["dn_s"] / d["s_b"]
+            else:
+                print(f"  warning: TE0-TE{d['m']} W_a = {d['wa']:g} nm: access share {s0:.3f} "
+                      f"after two corrections; W_pm = {wb:.1f} nm is kept")
             pts = []
             for dw in errors:
                 meta = self._matched_set(d, wb, dw)
@@ -756,7 +762,7 @@ class Study:
 
     def step_plots(self):
         import plots
-        plots.make_all(self.res, self.cfg, self.out, self.s.name)
+        plots.make_all(self.res, self.cfg, self.out)
 
     def write_summary(self):
         """One table with the main numbers, as CSV."""
@@ -789,13 +795,14 @@ STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "mode
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--backend", choices=["emode", "empy"], default="emode")
+    ap.add_argument("--backend", choices=["emode"], default="emode",
+                    help="the mode solver: EMode2D, the only one (kept so earlier command lines still work)")
     ap.add_argument("--quick", action="store_true", help="coarse grid and fewer points")
     ap.add_argument("--steps", default=",".join(STEPS), help="comma-separated: check," + ",".join(STEPS))
     ap.add_argument("--resolution", type=float, help="grid step in nm (overrides the configuration)")
     ap.add_argument("--couplers", default="1,2", help="which couplers to run: 1 = TE0-TE1, 2 = TE0-TE2")
     ap.add_argument("--access", help="access widths in nm, comma-separated (overrides the configuration)")
-    ap.add_argument("--out", help="results folder (default results_<backend>[_quick])")
+    ap.add_argument("--out", help="results folder (default results_emode[_quick] next to this script)")
     args = ap.parse_args()
 
     cfg = dict(CFG, **(QUICK if args.quick else {}))
@@ -808,19 +815,15 @@ def main():
     # Default results folder next to this script, so the run finds earlier results
     # (and its cache) wherever it is started from.
     outdir = args.out or os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                      f"results_{args.backend}" + ("_quick" if args.quick else ""))
+                                      "results_emode" + ("_quick" if args.quick else ""))
 
     if steps == ["plots"]:
         import plots
-        plots.make_all(json.load(open(os.path.join(outdir, "results.json"))), cfg, outdir, args.backend)
+        plots.make_all(json.load(open(os.path.join(outdir, "results.json"))), cfg, outdir)
         return
     os.makedirs(outdir, exist_ok=True)
-    if args.backend == "emode":
-        from solver_emode import EModeSolver
-        solver = EModeSolver(resolution=cfg["resolution"], save_path=outdir)   # adc_study.eph goes there
-    else:
-        from solver_empy import EMpySolver
-        solver = EMpySolver(resolution=cfg["resolution"])
+    from solver_emode import EModeSolver
+    solver = EModeSolver(resolution=cfg["resolution"], save_path=outdir)       # adc_study.eph goes there
 
     study, t0 = Study(solver, cfg, outdir), time.time()
     try:

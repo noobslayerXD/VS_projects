@@ -1,7 +1,7 @@
 """
 Mode fields of the couplers: the checks done on them and the saved files.
 
-Pure numpy, so it works the same for both solvers and for files saved earlier.
+Pure numpy, so the checks can be redone on files saved earlier.
 
 A saved set, modes/TE0-TE<m>_wa<access>_dw<error>.npz, holds four modes of one
 coupler geometry, all on the same grid (x along the chip, y up, nm; the silicon

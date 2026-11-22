@@ -1,17 +1,18 @@
 """
 Figures and tables for the design-study report (Photonics/mdm-design-study/report.tex).
 
-Reads the EMode results (results_emode/) and, for the couplers rebuilt at the
-phase-matched bus width, the open-source cross-check (crosscheck_empy_20nm/), and
-writes report-sized PDF figures and LaTeX table bodies:
+Reads the EMode results (results_emode/) and writes report-sized PDF figures and
+LaTeX table bodies:
 
     ../mdm-design-study/figures/report_*.pdf
-    ../mdm-design-study/generated/table_*.tex
+    ../mdm-design-study/generated/table_designs.tex      Table 1
+    ../mdm-design-study/generated/table_matched.tex      Table 2, only once the 'matched'
+                                                          step has been run in EMode
 
     python report_figures.py
 
-Rerun it after a new EMode run; the report picks the new files up on the next build.
-If results_emode/ holds the 'matched' step, Table 2 is taken from EMode instead.
+It also prints the numbers quoted in the report text. Rerun it after a new EMode run;
+the report picks the new files up on the next build.
 """
 import json
 import os
@@ -27,7 +28,6 @@ from plots import COUPLER, INK, INK2, SURFACE, _field_panel, _ramp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMODE = os.path.join(HERE, "results_emode")
-EMPY = os.path.join(HERE, "crosscheck_empy_20nm")
 REPORT = os.path.join(HERE, "..", "mdm-design-study")
 FIGS = os.path.join(REPORT, "figures")
 GEN = os.path.join(REPORT, "generated")
@@ -60,7 +60,7 @@ def panel_label(ax, text):
 # ---------------------------------------------------------------------- figures
 def fig_tradeoff(res):
     """(a) coupling coefficient, (b) sensitivity mismatch, (c) their ratio."""
-    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.8))
+    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.72))
     panels = [("(a) Coupling coefficient", "$\\kappa$ (µm$^{-1}$)", lambda d: d["kappa_per_um"]),
               ("(b) Sensitivity mismatch", "$S_a - S_m$ (10$^{-3}$ nm$^{-1}$)", lambda d: 1e3 * (d["s_a"] - d["s_b"])),
               ("(c) Coupling over mismatch", "$\\Delta n_{min}/(S_a - S_m)$ (nm)", lambda d: d["fom_nm"])]
@@ -83,7 +83,7 @@ def fig_tolerance(res):
     """(a, b) unconverted power against width error; (c) tolerance against access width."""
     lim = -15.0
     ramp = _ramp(sorted({t["wa"] for t in res["tolerance"]}))
-    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.95), gridspec_kw=dict(width_ratios=[1, 1, 1.05]))
+    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.85), gridspec_kw=dict(width_ratios=[1, 1, 1.05]))
     for ax, m, tag in ((axes[0], 1, "(a)"), (axes[1], 2, "(b)")):
         for t in sorted((t for t in res["tolerance"] if t["m"] == m), key=lambda t: t["wa"]):
             ax.plot(t["dw"], t["residual_dB"], color=ramp[t["wa"]], label=f"{t['wa']:.0f} nm")
@@ -161,7 +161,7 @@ def fig_fieldchecks(res):
     nominal = [r for r in res["modes"] if r["dw"] == 0]
     gap = 200
     ramp = _ramp(sorted({r["wa"] for r in nominal}))
-    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.85))
+    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.76))
     ax = axes[0]
     for wa in sorted(ramp):
         data = modefields.load(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
@@ -232,7 +232,7 @@ def table_designs(res):
     write("table_designs.tex", lines)
 
 
-def table_matched(res, source):
+def table_matched(res):
     """Table 2: tolerance with the bus at W* (model) and at the phase-matched width (fields)."""
     mat = sorted(res["matched"], key=lambda r: (r["m"], r["wa"]))
     widths = sorted({r["wa"] for r in mat})
@@ -241,7 +241,7 @@ def table_matched(res, source):
         sel = {r["wa"]: r for r in mat if r["m"] == m}
         cells = [f"{sel[w]['tol_model']:.2f} / {sel[w]['tol']:.2f}" if w in sel else "" for w in widths]
         lines.append(f"\\TE{{0}}$\\to$\\TE{{{m}}} & " + " & ".join(cells) + " \\\\")
-    lines.append("% widths: " + ", ".join(f"{w:g}" for w in widths) + f"; source: {source}")
+    lines.append("% access widths (columns): " + ", ".join(f"{w:g}" for w in widths) + " nm")
     write("table_matched.tex", lines)
 
 
@@ -254,8 +254,21 @@ def write(name, lines):
     print("wrote", os.path.relpath(path, HERE))
 
 
-def summary(res, xres):
+def summary(res):
     """The numbers quoted in the report text."""
+    des = {(d["m"], d["wa"]): d for d in res["design"]}
+    tol = {(t["m"], t["wa"]): t for t in res["tolerance"]}
+    for m in (1, 2):
+        lo, hi = des[(m, 320)], des[(m, 480)]
+        print(f"TE0-TE{m}: kappa {hi['kappa_per_um']:.4f} -> {lo['kappa_per_um']:.4f} "
+              f"({lo['kappa_per_um'] / hi['kappa_per_um']:.2f}x), mismatch "
+              f"{1e3 * (hi['s_a'] - hi['s_b']):.3f} -> {1e3 * (lo['s_a'] - lo['s_b']):.3f} "
+              f"({(lo['s_a'] - lo['s_b']) / (hi['s_a'] - hi['s_b']):.2f}x), ratio {hi['fom_nm']:.1f} -> "
+              f"{lo['fom_nm']:.1f} nm ({lo['fom_nm'] / hi['fom_nm']:.2f}x), L_c {hi['Lc'] / 1e3:.2f} -> "
+              f"{lo['Lc'] / 1e3:.2f} um, tolerance {tol[(m, 480)]['tol']:.2f} -> {tol[(m, 320)]['tol']:.2f} nm "
+              f"({tol[(m, 320)]['tol'] / tol[(m, 480)]['tol']:.2f}x)")
+        print("   first order minus re-solved (nm):",
+              {wa: round(d["tol_cmt"] - tol[(m, wa)]["tol"], 2) for (mm, wa), d in des.items() if mm == m})
     rows = res["modes"]
     print("\nmax two-mode residual (EMode): %.4f" % max(max(r["residual_upper"], r["residual_lower"]) for r in rows))
     print("max |dn_s solved - fit| / fit: %.4f" % max(abs(r["dn_s"] - r["dn_s_model"]) / r["dn_s_model"] for r in rows))
@@ -267,7 +280,6 @@ def summary(res, xres):
             print(f"  TE0-TE{r['m']} {r['wa']}: share {r['share_upper']:.3f}, "
                   f"unconverted {r['unconverted_fields_dB']:.1f} dB, W* {r['wb_star']:.1f}, "
                   f"W_even {r['wb_even_fields']:.1f}, W_iso {r['wb_iso']:.1f}")
-    print("cross-check tolerances (EMpy, model):", [(t["m"], t["wa"], t["tol"]) for t in xres["tolerance"]])
     print("convergence:", [(c["resolution"], round(c["wb_star"], 1), round(c["Lc"] / 1e3, 2))
                            for c in res["validate"]["convergence"]])
     v = res["validate"]
@@ -277,17 +289,19 @@ def summary(res, xres):
 
 
 def main():
-    res, xres = load(EMODE), load(EMPY)
+    res = load(EMODE)
     fig_tradeoff(res)
     fig_tolerance(res)
     fig_modes(res)
     fig_fieldchecks(res)
     table_designs(res)
+    stale = os.path.join(GEN, "table_matched.tex")
     if res.get("matched"):
-        table_matched(res, "EMode2D")
-    else:
-        table_matched(xres, "open-source cross-check (EMpy), 20 nm grid")
-    summary(res, xres)
+        table_matched(res)
+    elif os.path.exists(stale):
+        os.remove(stale)                                  # no EMode 'matched' run: no Table 2
+        print("removed", os.path.relpath(stale, HERE))
+    summary(res)
 
 
 if __name__ == "__main__":

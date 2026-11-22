@@ -10,14 +10,13 @@ and a 200 nm gap. Everything is a 2D cross-section mode solve, so it runs in EMo
 | File | What it does |
 | --- | --- |
 | `adc_study.py` | The study: parameters at the top, one function per step. |
-| `solver_emode.py` | Every EMode call lives here (settings, shape, reset, FDM, get). EMode2D functions only. |
-| `solver_empy.py` | Open-source mode solver with the same interface, for cross-checks. |
+| `solver_emode.py` | Every EMode call lives here (settings, shape, reset, FDM, get, get_grid, get_fields). EMode2D functions only; EMode2D is the only solver. |
 | `modefields.py` | Mode fields: the checks done on them and the saved `modes/*.npz` files (`modefields.load`). |
 | `plots.py` | The figures. |
-| `report_figures.py` | Figures (PDF) and Table 1 for the report in `../mdm-design-study/report.tex`, from `results_emode/` (and the cross-check for the phase-matched couplers until EMode has run that step). |
-| `../tests/` | In `Photonics/tests`: test double of `emodeconnection` (documented arguments only), `test_solver_emode.py` and `test_modes_step.py`. Run them from `Photonics/`, for example `python tests/test_modes_step.py`. |
-| `results_emode/` | Your EMode run. |
-| `crosscheck_empy_20nm/` | Results of a complete run with the open-source solver, including the mode fields. |
+| `report_figures.py` | Figures (PDF) and tables for the report in `../mdm-design-study/report.tex`, from `results_emode/`. |
+| `../tests/` | In `Photonics/tests`: a test double of `emodeconnection` and two test scripts. The double accepts only the documented EMode arguments and answers with a made-up coupled-mode model; it is not a mode solver and none of the study's results come from it. Run the tests from `Photonics/`, for example `python tests/test_modes_step.py`. |
+| `results_emode/` | The EMode2D run (10 nm grid). |
+| `results_emode_quick/` | The coarse EMode2D run (`--quick`, 20 nm grid). |
 
 ## Run it
 
@@ -43,13 +42,6 @@ Other options: `--access 300,340,400` (access widths in nm), `--couplers 1`,
 new; saved mode fields are reused the same way. Delete `cache.json` (or `modes/`) to
 force new solves.
 
-The open-source cross-check needs no EMode:
-
-```
-pip install electromagneticpython
-python adc_study.py --backend empy --resolution 20
-```
-
 ## Status: what has been tested
 
 - `solver_emode.py` was checked line by line against the EMode documentation
@@ -57,21 +49,21 @@ python adc_study.py --backend empy --resolution 20
   management, Variables and Material pages, the release notes and troubleshooting,
   and the EMode2D examples. The full study has since been run with a licensed EMode
   (`results_emode/`).
-- `mode_fields()`, the field reading of the `modes` and `matched` steps, has run against
-  EMode (`results_emode/modes/`). It now reads the grid with `get_grid()` and the fields
-  with `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks: reading
-  `x`, `y` or a field through `get()` is deprecated and prints a warning. `get()` is
-  still used for `effective_index`, `TE_fraction`, `loss_dB_per_m`, `BC`,
-  `PML_indices` and `emode_version`, which are not deprecated. The `check` step does one
-  field solve and prints the grid, the components EMode returned and where the TE0
-  field is centred (should be x = 0, y = 0).
+- `mode_fields()`, the field reading of the `modes` and `matched` steps, produced
+  `results_emode/modes/` with EMode's `get('x')`, `get('Ex')`, ... calls. Those are
+  deprecated, so it now reads the grid with `get_grid()` and the fields with
+  `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks. This new
+  version has not yet run against EMode: run the `check` step first. It does one field
+  solve and prints the grid, the components EMode returned and where the TE0 field is
+  centred (should be x = 0, y = 0). `get()` is still used for `effective_index`,
+  `TE_fraction`, `loss_dB_per_m`, `BC`, `PML_indices` and `emode_version`, which are
+  not deprecated.
 - A test double of `emodeconnection` that only accepts the documented keyword
   arguments and applies the documented conventions was used to run the whole study,
   including the `modes` and `matched` steps, through the EMode code path. It refuses
-  the deprecated `get('x')`, `get('Ex')`, ... calls. That tests the Python, not EMode's
-  numbers.
-- The analysis (`adc_study.py`, `plots.py`) was run end to end with the open-source
-  solver. Those results are in `crosscheck_empy_20nm/`. They are not EMode results.
+  the deprecated `get('x')`, `get('Ex')`, ... calls. Its numbers come from a made-up
+  coupled-mode model, so it tests the Python, not EMode's numbers.
+- The `matched` step has not been run in EMode yet.
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -178,7 +170,7 @@ em.close()
 
 Each `modes/TE0-TE<m>_wa<access>_dw<error>.npz` holds the four modes of one
 geometry on one grid, real after a phase rotation, with 600 nm of cladding around
-the strips (about 0.2 MB at 20 nm, 1 to 2 MB at 10 nm). Coordinates are in nm, with
+the strips (about 1 MB each at a 10 nm grid). Coordinates are in nm, with
 the access strip centred on x = 0 and the silicon from y = -110 to +110 nm.
 
 ```python
@@ -211,82 +203,72 @@ next to the gap means the two strips oscillate in phase.
 | `fig12_tolerance_fields` | Unconverted power against width error: the model of step 3 (lines) and the fields (dots). |
 | `fig13_tolerance_matched` | Tolerance with the bus at W* (model) and at the phase-matched width (fields). |
 
-## Cross-check results (open-source solver, 20 nm grid, not EMode)
+## Results (EMode2D, 10 nm grid, `results_emode/`)
 
-| Coupler | Access (nm) | Bus W* (nm) | L_c (um) | S_a - S_m (1e-3/nm) | Tolerance (nm) | First-order (nm) | Worst C-band (dB) |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| TE0→TE1 | 320 | 702 | 7.4 | 1.96 | ±8.25 | ±9.5 | -17.4 |
-| TE0→TE1 | 360 | 772 | 12.2 | 1.69 | ±6.0 | ±6.5 | -16.8 |
-| TE0→TE1 | 400 | 846 | 19.5 | 1.35 | ±5.0 | ±5.25 | -16.2 |
-| TE0→TE1 | 440 | 922 | 29.8 | 1.07 | ±4.0 | ±4.25 | -16.7 |
-| TE0→TE1 | 480 | 999 | 42.8 | 0.84 | ±3.5 | ±3.75 | -17.1 |
-| TE0→TE2 | 320 | 1079 | 8.8 | 2.68 | ±5.5 | ±5.75 | -15.7 |
-| TE0→TE2 | 360 | 1180 | 14.8 | 2.29 | ±3.75 | ±4.0 | -15.5 |
-| TE0→TE2 | 400 | 1288 | 23.7 | 1.82 | ±3.0 | ±3.0 | -15.5 |
-| TE0→TE2 | 440 | 1401 | 36.2 | 1.43 | ±2.5 | ±2.5 | -15.5 |
-| TE0→TE2 | 480 | 1516 | 52.1 | 1.13 | ±2.0 | ±2.25 | -15.6 |
+| Coupler | Access (nm) | Bus W* (nm) | L_c (um) | kappa (1/um) | S_a - S_m (1e-3/nm) | Tolerance (nm) | First-order (nm) | Worst C-band (dB) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TE0→TE1 | 320 | 697.2 | 7.1 | 0.222 | 2.02 | ±8 | ±9.5 | -17.1 |
+| TE0→TE1 | 360 | 766.7 | 12.0 | 0.130 | 1.77 | ±5.75 | ±6.5 | -16.2 |
+| TE0→TE1 | 400 | 840.8 | 19.8 | 0.079 | 1.42 | ±4.5 | ±4.75 | -16.5 |
+| TE0→TE1 | 440 | 917.0 | 30.3 | 0.052 | 1.12 | ±3.75 | ±4 | -16.4 |
+| TE0→TE1 | 480 | 994.5 | 45.2 | 0.035 | 0.87 | ±3 | ±3.5 | -16.6 |
+| TE0→TE2 | 320 | 1069.4 | 8.5 | 0.185 | 2.80 | ±5.25 | ±5.75 | -15.5 |
+| TE0→TE2 | 360 | 1169.9 | 14.6 | 0.108 | 2.40 | ±3.5 | ±3.75 | -15.3 |
+| TE0→TE2 | 400 | 1278.6 | 24.0 | 0.065 | 1.90 | ±2.75 | ±3 | -15.4 |
+| TE0→TE2 | 440 | 1391.7 | 37.3 | 0.042 | 1.48 | ±2 | ±2.5 | -15.7 |
+| TE0→TE2 | 480 | 1507.0 | 54.2 | 0.029 | 1.17 | ±1.75 | ±2 | -15.8 |
 
-"Worst C-band" is the highest unconverted power between 1530 and 1565 nm.
+"Worst C-band" is the highest unconverted power between 1530 and 1565 nm. The
+tolerance is the largest |dW| with at most -15 dB unconverted power at the nominal
+coupler length.
 
 Checks from the same run:
 
-- Mesh convergence of the baseline TE0→TE1 coupler: L_c = 19.6, 19.5, 19.8 um at
-  40, 20, 10 nm grid. W* = 849, 846, 844 nm.
+- Mesh convergence of the 400 nm TE0→TE1 coupler: L_c = 19.17, 19.74 and 19.82 um and
+  W* = 844.6, 841.7 and 840.8 nm at 40, 20 and 10 nm grid.
 - Wang et al. 2022 report 17.0 um for their conventional TE0→TE1 coupler with a
-  400 nm access waveguide. This run gives 19.5 um.
-- Dai et al. 2013 use a 1020 nm bus for TM0→TM1. Isolated phase matching in this run
-  gives 1053 nm at 20 nm grid (1042 nm at 5 nm grid). Their 4.5 um coupler length
-  comes from 3D FDTD with S-bends and is not comparable with the 11.9 um supermode
-  coupling length.
+  400 nm access waveguide. This run gives L_c = 19.8 um.
+- Dai et al. 2013 use a 1020 nm bus for TM0→TM1 (400 nm access, 1500 nm, constant
+  indices 3.455 and 1.445). Isolated phase matching in this run gives 1035.5 nm.
 
-### Mode-field check (same solver and grid, `--steps modes`)
+### Mode-field check (`--steps modes`)
 
 The coupling is the intended two-mode coupling, and it is stronger for narrow access
 waveguides for the expected reason:
 
-- The two strip modes explain every supermode to within 2.2 % of its field (largest
-  for 320 nm access, 0.2 % at 480 nm). The upper supermode has the strips in phase and
-  the lower in anti-phase in every case. TE fraction at least 0.94; at most 0.13 % of
-  a field lies within 300 nm of the window walls.
+- The two strip modes explain every supermode to within 2.8 % of its field (largest
+  for 320 nm access, at most 0.35 % at 480 nm). The upper supermode has the strips in
+  phase and the lower in anti-phase in every case. TE fraction at least 0.93; at most
+  0.02 % of a field lies within 300 nm of the window walls.
 - The supermode splitting solved at each exact geometry agrees with the anticrossing
-  fit to within 1.9 %.
-- The access mode alone has |Ex|^2 at the bus edge of -11.4 dB (320 nm), -14.5,
-  -16.9, -18.8 and -20.4 dB (480 nm) relative to its peak.
+  fits to within 2.9 %.
+- The access mode alone has |Ex|^2 at the bus edge of -12.4 dB (320 nm), -14.8,
+  -17.3, -19.4 and -21.0 dB (480 nm) relative to its peak.
 
 But W*, the anticrossing minimum, is not where the supermodes are an even mixture:
 
-| Coupler | Access (nm) | W* (nm) | W_iso (nm) | Even mixture (nm) | Access share at W* | Unconverted at W*, dW = 0 (dB) |
+| Coupler | Access (nm) | W* (nm) | W_iso (nm) | Even mixture W_pm (nm) | Access share at W* | Unconverted at W*, dW = 0 (dB) |
 | --- | --- | --- | --- | --- | --- | --- |
-| TE0→TE1 | 320 | 701.8 | 691.0 | 690.8 | 0.37 | -11.9 |
-| TE0→TE1 | 360 | 771.7 | 765.5 | 765.7 | 0.41 | -14.8 |
-| TE0→TE1 | 400 | 845.5 | 841.3 | 841.9 | 0.43 | -17.3 |
-| TE0→TE1 | 440 | 921.8 | 919.0 | 919.1 | 0.44 | -18.7 |
-| TE0→TE1 | 480 | 999.1 | 996.4 | 997.1 | 0.45 | -19.9 |
-| TE0→TE2 | 320 | 1078.6 | 1065.2 | 1067.1 | 0.39 | -13.0 |
-| TE0→TE2 | 360 | 1179.6 | 1171.6 | 1173.7 | 0.43 | -16.6 |
-| TE0→TE2 | 400 | 1288.3 | 1282.9 | 1284.8 | 0.45 | -19.5 |
-| TE0→TE2 | 440 | 1401.1 | 1396.6 | 1398.7 | 0.46 | -21.5 |
-| TE0→TE2 | 480 | 1516.1 | 1512.9 | 1514.4 | 0.47 | -23.3 |
+| TE0→TE1 | 320 | 697.2 | 686.3 | 686.1 | 0.37 | -11.6 |
+| TE0→TE1 | 360 | 766.7 | 760.6 | 761.1 | 0.41 | -15.0 |
+| TE0→TE1 | 400 | 840.8 | 837.0 | 837.2 | 0.43 | -17.2 |
+| TE0→TE1 | 440 | 917.0 | 914.3 | 914.7 | 0.45 | -19.4 |
+| TE0→TE1 | 480 | 994.5 | 992.2 | 992.7 | 0.45 | -20.5 |
+| TE0→TE2 | 320 | 1069.4 | 1055.3 | 1057.6 | 0.38 | -12.6 |
+| TE0→TE2 | 360 | 1169.9 | 1161.8 | 1164.3 | 0.43 | -16.6 |
+| TE0→TE2 | 400 | 1278.6 | 1273.6 | 1275.6 | 0.45 | -20.0 |
+| TE0→TE2 | 440 | 1391.7 | 1387.8 | 1389.6 | 0.46 | -22.0 |
+| TE0→TE2 | 480 | 1507.0 | 1503.6 | 1505.6 | 0.47 | -24.3 |
 
 W_iso is the bus width at which the isolated strips have equal n_eff (step 2's
-"isolated" column). The even-mixture width from the fields lands within 2 nm of it,
-while W* is 2 to 13 nm wider. The coupling weakens as the bus widens, and that moves
-the minimum of dn_s away from phase matching; the narrower the access waveguide, the
-stronger the coupling and the larger the shift. A coupler built at W* is therefore
-detuned before any fabrication error, by most for the narrowest access widths. The
-tolerances in the table above assume full conversion at dW = 0, that is, a coupler
-at the phase-matched width, not at W*.
-
-Rebuilt at the phase-matched width (`--steps matched`, same solver and grid), the
-couplers are even mixtures (access share 0.500 to 0.509) and the tolerance from the
-fields stays within 0.75 nm of the model's:
-
-| Coupler | 320 nm | 360 nm | 400 nm | 440 nm | 480 nm |
-| --- | --- | --- | --- | --- | --- |
-| TE0→TE1, model at W* / fields at W_pm (nm) | ±8.25 / ±7.5 | ±6.0 / ±6.0 | ±5.0 / ±5.0 | ±4.0 / ±4.0 | ±3.5 / ±3.5 |
-| TE0→TE2, model at W* / fields at W_pm (nm) | ±5.5 / ±5.0 | ±3.75 / ±3.75 | ±3.0 / ±3.0 | ±2.5 / ±2.5 | ±2.0 / ±2.25 |
-
-So the trend of the study holds; only the bus widths must be the phase-matched ones.
+"isolated" column). The even-mixture width from the fields lies within 0.5 nm of it
+for TE0→TE1 and within 2.5 nm for TE0→TE2, while W* is 1.4 to 12 nm wider. The
+coupling weakens as the bus widens, and that moves the minimum of dn_s away from
+phase matching; the narrower the access waveguide, the stronger the coupling and the
+larger the shift. A coupler built at W* is therefore detuned before any fabrication
+error, by most for the narrowest access widths. The tolerances in the table above
+assume full conversion at dW = 0, that is, a coupler at the phase-matched width, not
+at W*. The `matched` step solves those couplers directly; it has not been run yet.
 
 ## Limits of the method
 
@@ -302,6 +284,3 @@ So the trend of the study holds; only the bus widths must be the phase-matched o
 - The unconverted power is a coupler-level number. Channel crosstalk in a complete
   multiplexer needs a propagation simulation (EME or FDTD).
 - Only width errors are studied. Silicon thickness and sidewall angle also vary.
-- The open-source solver has no sub-pixel averaging: its n_eff is about 0.01 too high
-  at a 10 nm grid. EMode uses sub-pixel averaging by default (`subpixel_avg=True`)
-  and should converge faster.
