@@ -52,10 +52,13 @@ force new solves.
 - `mode_fields()`, the field reading of the `modes` and `matched` steps, produced
   `results_emode/modes/` with EMode's `get('x')`, `get('Ex')`, ... calls. Those are
   deprecated, so it now reads the grid with `get_grid()` and the fields with
-  `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks. This new
-  version has not yet run against EMode: run the `check` step first. It does one field
-  solve and prints the grid, the components EMode returned and where the TE0 field is
-  centred (should be x = 0, y = 0). `get()` is still used for `effective_index`,
+  `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks. This
+  version has since run in EMode: the `matched` step read all its fields through it,
+  and they agree with the fields of the `modes` step (the couplers rebuilt at the W_pm
+  of the `modes` step are even mixtures, access share 0.499 to 0.506; two-mode
+  residuals up to 2.75 %, as before). The `check` step does one field solve and prints
+  the grid, the components EMode returned and where the TE0 field is centred (should
+  be x = 0, y = 0). `get()` is still used for `effective_index`,
   `TE_fraction`, `loss_dB_per_m`, `BC`, `PML_indices` and `emode_version`, which are
   not deprecated.
 - A test double of `emodeconnection` that only accepts the documented keyword
@@ -63,7 +66,7 @@ force new solves.
   including the `modes` and `matched` steps, through the EMode code path. It refuses
   the deprecated `get('x')`, `get('Ex')`, ... calls. Its numbers come from a made-up
   coupled-mode model, so it tests the Python, not EMode's numbers.
-- The `matched` step has not been run in EMode yet.
+- The `matched` step has been run in EMode (`results_emode/`).
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -269,14 +272,36 @@ But W*, the anticrossing minimum, is not where the supermodes are an even mixtur
 | TE0→TE2 | 480 | 1507.0 | 1503.6 | 1505.6 | 0.47 | -24.3 |
 
 W_iso is the bus width at which the isolated strips have equal n_eff (step 2's
-"isolated" column). The even-mixture width from the fields lies within 0.5 nm of it
+"isolated" column). The even-mixture width from the fields lies within 0.53 nm of it
 for TE0→TE1 and within 2.5 nm for TE0→TE2, while W* is 1.4 to 12 nm wider. The
 coupling weakens as the bus widens, and that moves the minimum of dn_s away from
 phase matching; the narrower the access waveguide, the stronger the coupling and the
 larger the shift. A coupler built at W* is therefore detuned before any fabrication
 error, by most for the narrowest access widths. The tolerances in the table above
 assume full conversion at dW = 0, that is, a coupler at the phase-matched width, not
-at W*. The `matched` step solves those couplers directly; it has not been run yet.
+at W*. The `matched` step solves those couplers directly:
+
+### Couplers at the phase-matched width (`--steps matched`)
+
+| Coupler | Access (nm) | W_pm (nm) | Access share at dW = 0 | L_pm (um) | L_c at W* (um) | Unconverted at dW = 0 (dB) | Tolerance at W*, model (nm) | Tolerance at W_pm, fields (nm) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TE0→TE1 | 320 | 686.1 | 0.506 | 6.90 | 7.08 | -38.1 | ±8 | ±8 |
+| TE0→TE1 | 360 | 761.1 | 0.501 | 11.98 | 12.05 | -51.0 | ±5.75 | ±5.5 |
+| TE0→TE1 | 400 | 837.2 | 0.505 | 19.71 | 19.82 | -40.5 | ±4.5 | ±4.5 |
+| TE0→TE1 | 440 | 914.7 | 0.501 | 30.48 | 30.31 | -56.2 | ±3.75 | ±3.5 |
+| TE0→TE1 | 480 | 992.7 | 0.499 | 44.56 | 45.17 | -56.1 | ±3 | ±3 |
+| TE0→TE2 | 320 | 1057.6 | 0.505 | 8.29 | 8.48 | -39.5 | ±5.25 | ±5.25 |
+| TE0→TE2 | 360 | 1164.3 | 0.503 | 14.50 | 14.61 | -45.0 | ±3.5 | ±3.5 |
+| TE0→TE2 | 400 | 1275.6 | 0.501 | 23.98 | 24.02 | -55.8 | ±2.75 | ±2.5 |
+| TE0→TE2 | 440 | 1389.6 | 0.500 | 37.15 | 37.26 | < -60 | ±2 | ±2.25 |
+| TE0→TE2 | 480 | 1505.6 | 0.500 | 54.39 | 54.20 | < -60 | ±1.75 | ±1.75 |
+
+The W_pm estimated in the `modes` step needed no correction: one solve at each found
+an even mixture. Rebuilt there, every coupler leaves less than -38 dB unconverted at
+dW = 0 (against -11.6 to -24.3 dB at W*), L_pm differs from L_c by less than 3 %, and
+the tolerance from the fields agrees with the model's to within one 0.25 nm step. The
+model's tolerances are therefore right for couplers built at W_pm; what the
+minimum-splitting rule gets wrong is the bus width.
 
 ## Limits of the method
 

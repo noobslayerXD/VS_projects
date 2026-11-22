@@ -5,9 +5,8 @@ Reads the EMode results (results_emode/) and writes report-sized PDF figures and
 LaTeX table bodies:
 
     ../mdm-design-study/figures/report_*.pdf
-    ../mdm-design-study/generated/table_designs.tex      Table 1
-    ../mdm-design-study/generated/table_matched.tex      Table 2, only once the 'matched'
-                                                          step has been run in EMode
+    ../mdm-design-study/generated/table_designs.tex      Table 1 (its 'at W_pm' column
+                                                          comes from the 'matched' step)
 
     python report_figures.py
 
@@ -216,33 +215,22 @@ def table_designs(res):
     tol = {(t["m"], t["wa"]): t for t in res["tolerance"]}
     wav = {(w["m"], w["wa"]): w for w in res["wavelength"]}
     mod = {(r["m"], r["wa"]): r for r in res["modes"] if r["dw"] == 0}
+    mat = {(r["m"], r["wa"]): r for r in res.get("matched", [])}      # '--' until the 'matched' step has run
     lines = []
     for m in (1, 2):
         ds = sorted((d for d in res["design"] if d["m"] == m), key=lambda d: d["wa"])
-        lines.append(f"\\multicolumn{{10}}{{l}}{{\\TE{{0}}$\\to$\\TE{{{m}}}}} \\\\")
+        lines.append(f"\\multicolumn{{11}}{{l}}{{\\TE{{0}}$\\to$\\TE{{{m}}}}} \\\\")
         for d in ds:
             k = (m, d["wa"])
+            at_pm = f"{mat[k]['tol']:.2f}" if k in mat else "--"
             lines.append(
                 f"{d['wa']:.0f} & {d['wb_star']:.1f} & {mod[k]['wb_even_fields']:.1f} & {d['Lc'] / 1e3:.1f} & "
                 f"{d['kappa_per_um']:.3f} & {1e3 * (d['s_a'] - d['s_b']):.2f} & {tol[k]['tol']:.2f} & "
-                f"{d['tol_cmt']:.2f} & \\num{{{mod[k]['unconverted_fields_dB']:.1f}}} & "
+                f"{d['tol_cmt']:.2f} & {at_pm} & \\num{{{mod[k]['unconverted_fields_dB']:.1f}}} & "
                 f"\\num{{{wav[k]['worst_residual_c_band_dB']:.1f}}} \\\\")
         if m == 1:
             lines.append("\\addlinespace")
     write("table_designs.tex", lines)
-
-
-def table_matched(res):
-    """Table 2: tolerance with the bus at W* (model) and at the phase-matched width (fields)."""
-    mat = sorted(res["matched"], key=lambda r: (r["m"], r["wa"]))
-    widths = sorted({r["wa"] for r in mat})
-    lines = []
-    for m in (1, 2):
-        sel = {r["wa"]: r for r in mat if r["m"] == m}
-        cells = [f"{sel[w]['tol_model']:.2f} / {sel[w]['tol']:.2f}" if w in sel else "" for w in widths]
-        lines.append(f"\\TE{{0}}$\\to$\\TE{{{m}}} & " + " & ".join(cells) + " \\\\")
-    lines.append("% access widths (columns): " + ", ".join(f"{w:g}" for w in widths) + " nm")
-    write("table_matched.tex", lines)
 
 
 def write(name, lines):
@@ -286,6 +274,21 @@ def summary(res):
     print("wang:", round(v["wang"]["wb_iso"], 1), round(v["wang"]["wb_star"], 1), round(v["wang"]["Lc"] / 1e3, 2))
     print("dai:", round(v["dai"]["wb_iso"], 1), round(v["dai"]["wb_star"], 1), round(v["dai"]["Lc"] / 1e3, 2))
     print("bend (dB/90deg):", [(b["wa"], b["radius"], f"{b['loss_dB_per_90deg']:.2g}") for b in res["bend"]])
+    mat = res.get("matched", [])
+    if mat:
+        mod = {(r["m"], r["wa"]): r for r in rows if r["dw"] == 0}
+        p0 = [next(p for p in r["points"] if p["dw"] == 0) for r in mat]
+        print("\nmatched: access share at dW = 0 %.4f to %.4f" % (min(r["share0"] for r in mat),
+                                                                   max(r["share0"] for r in mat)))
+        print("  W_pm changed from the 'modes' estimate by at most %.3f nm"
+              % max(abs(r["wb_pm"] - mod[(r["m"], r["wa"])]["wb_even_fields"]) for r in mat))
+        print("  highest unconverted power at dW = 0: %.2f dB" % max(10 * np.log10(1 - p["eta"]) for p in p0))
+        print("  largest |L_pm / L_c - 1|: %.2f %%" % max(100 * abs(r["Lc_pm"] / r["Lc_star"] - 1) for r in mat))
+        print("  largest |tolerance at W_pm - re-solved|: %.2f nm" % max(abs(r["tol"] - r["tol_model"]) for r in mat))
+        print("  largest two-mode residual: %.4f" % max(p["residual"] for r in mat for p in r["points"]))
+        for m in (1, 2):
+            sel = [r for r in mat if r["m"] == m]
+            print(f"  TE0-TE{m}: largest |W_pm - W_iso| {max(abs(r['wb_pm'] - r['wb_iso']) for r in sel):.3f} nm")
 
 
 def main():
@@ -295,12 +298,6 @@ def main():
     fig_modes(res)
     fig_fieldchecks(res)
     table_designs(res)
-    stale = os.path.join(GEN, "table_matched.tex")
-    if res.get("matched"):
-        table_matched(res)
-    elif os.path.exists(stale):
-        os.remove(stale)                                  # no EMode 'matched' run: no Table 2
-        print("removed", os.path.relpath(stale, HERE))
     summary(res)
 
 
