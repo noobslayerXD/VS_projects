@@ -207,7 +207,9 @@ the gap.
 
 The mode maps (figures 8 to 10 and the report's mode figure) use EMode's own colour
 scale, matplotlib's `plasma` as in EMode's `plot()`: |Ex| with each mode scaled to its
-own peak, dark where there is no field, and the silicon outlined in white.
+own peak, dark where there is no field, and the silicon outlined in white. All other
+figures use matplotlib's default colours: C0 for TE0→TE1, C1 for TE0→TE2, and one default
+colour per access width.
 
 ## Results (EMode2D, 10 nm grid, `results_emode/`)
 
