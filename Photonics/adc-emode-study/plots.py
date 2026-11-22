@@ -6,18 +6,17 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.patches import Rectangle
 
 SURFACE, INK, INK2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3de"
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"          # one colour per mode / coupler
 RAMP = ["#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"]  # light -> dark = narrow -> wide access
 COUPLER = {1: ("TE$_0$→TE$_1$", BLUE), 2: ("TE$_0$→TE$_2$", ORANGE)}
-# Signed field maps: blue (negative) <-> red (positive), neutral gray at zero, equal steps per arm.
-ZERO = "#f0efec"
-FIELD = LinearSegmentedColormap.from_list("field", [
-    (0.0, "#0d366b"), (1 / 6, "#2a78d6"), (2 / 6, "#86b6ef"), (0.5, ZERO),
-    (4 / 6, "#f2a9a7"), (5 / 6, "#e34948"), (1.0, "#8c1d1d")])
+# Mode maps use EMode's own colour scale: EMode's plot() draws fields on matplotlib's 'plasma'
+# (checked against a colour bar saved by EMode), with no field at the dark end.
+FIELD = "plasma"
+FIELD_ZERO = "#0d0887"            # 'plasma' at 0: the colour of no field
+ON_FIELD = "white"                # silicon outlines, labels and scale bars drawn on a mode map
 
 plt.rcParams.update({
     "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
@@ -225,26 +224,44 @@ def _mode_rows(res):
     return {(r["m"], r["wa"], r["dw"]): r for r in res.get("modes", [])}
 
 
-def _extent(sets, margin=450):
-    """Common x and y limits (nm) that show every coupler in `sets` at the same scale."""
-    cores = [c for s in sets for c in s["meta"]["cores"]]
-    h = sets[0]["meta"]["h_si"]
-    return ((min(c - w / 2 for c, w in cores) - margin, max(c + w / 2 for c, w in cores) + margin),
-            (-h / 2 - 380, h / 2 + 380))
+def _views(rows, margin=450, ymargin=380):
+    """x and y limits (nm) for each row of field panels. `rows` holds one list of stored mode
+    sets per row. Every row gets the same span, so all panels share one scale; each row is
+    centred on its own couplers and kept inside its stored windows, because beyond them
+    there is no field to draw and the window edge would show on EMode's colour scale."""
+    def box(sets):
+        cores = [c for s in sets for c in s["meta"]["cores"]]
+        return (min(c - w / 2 for c, w in cores), max(c + w / 2 for c, w in cores),
+                max(s["x"][0] for s in sets), min(s["x"][-1] for s in sets))
+
+    boxes = [box(r) for r in rows]
+    widest = max(right - left for left, right, _, _ in boxes)
+    span = max(min(widest + 2 * margin, min(hi - lo for _, _, lo, hi in boxes)), widest + 100)
+    every = [s for r in rows for s in r]
+    h = every[0]["meta"]["h_si"]
+    my = max(0.0, min(ymargin, -h / 2 - max(s["y"][0] for s in every), min(s["y"][-1] for s in every) - h / 2))
+    views = []
+    for left, right, lo, hi in boxes:
+        x0 = (left + right - span) / 2
+        if hi - lo >= span:                     # else (windows saved narrower) stay centred
+            x0 = min(max(x0, lo), hi - span)
+        views.append(((x0, x0 + span), (-h / 2 - my, h / 2 + my)))
+    return views
 
 
 def _field_panel(ax, data, name, xlim, ylim):
-    """Re(Ex) of one stored mode, scaled to its own peak, with the silicon outlined."""
+    """|Ex| of one stored mode on EMode's colour scale, scaled to its own peak, with the
+    silicon outlined. A sign change shows as a dark line (a zero of the field)."""
     x, y = data["x"], data["y"]
-    ex = np.real(data["modes"][name]["Ex"])
+    ex = np.abs(data["modes"][name]["Ex"])
     dx, dy = np.diff(x).mean(), np.diff(y).mean()
-    ax.set_facecolor(ZERO)                                # outside the stored window the field is ~0
-    im = ax.imshow((ex / np.abs(ex).max()).T, origin="lower", cmap=FIELD, vmin=-1, vmax=1,
+    ax.set_facecolor(FIELD_ZERO)                          # outside the stored window the field is ~0
+    im = ax.imshow((ex / ex.max()).T, origin="lower", cmap=FIELD, vmin=0, vmax=1,
                    extent=[x[0] - dx / 2, x[-1] + dx / 2, y[0] - dy / 2, y[-1] + dy / 2],
                    interpolation="bilinear")
     h = data["meta"]["h_si"]
     for c, w in data["meta"]["cores"]:
-        ax.add_patch(Rectangle((c - w / 2, -h / 2), w, h, fill=False, ec=INK, lw=0.7))
+        ax.add_patch(Rectangle((c - w / 2, -h / 2), w, h, fill=False, ec=ON_FIELD, lw=0.7))
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     ax.set_aspect("equal")
@@ -258,9 +275,9 @@ def _field_panel(ax, data, name, xlim, ylim):
 
 def _scale_bar(ax, xlim, ylim, length=500):
     x0, y0 = xlim[0] + 0.04 * (xlim[1] - xlim[0]), ylim[0] + 0.1 * (ylim[1] - ylim[0])
-    ax.plot([x0, x0 + length], [y0, y0], color=INK, lw=1.2, solid_capstyle="butt")
+    ax.plot([x0, x0 + length], [y0, y0], color=ON_FIELD, lw=1.2, solid_capstyle="butt")
     ax.text(x0 + length / 2, y0 + 0.04 * (ylim[1] - ylim[0]), f"{length:g} nm", ha="center", va="bottom",
-            fontsize=7, color=INK)
+            fontsize=7, color=ON_FIELD)
 
 
 def _field_grid(nrows, ncols, pw, ph, left=1.2, right=1.05, top=0.78, bottom=0.12, gapw=0.08, gaph=0.16):
@@ -278,10 +295,11 @@ def _field_grid(nrows, ncols, pw, ph, left=1.2, right=1.05, top=0.78, bottom=0.1
 
 
 def _field_colorbar(fig, im, cax):
-    cb = fig.colorbar(im, cax=cax, ticks=[-1, 0, 1])
-    cb.set_label("Re(E$_x$), each mode scaled to its peak", color=INK2)
+    cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1])
+    cb.set_label("|E$_x$|, each mode scaled to its peak", color=INK2)
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0)
+    cb.ax.grid(False)                                    # no style grid line across the scale
 
 
 def fig_mode_gallery(res, cfg, outdir, note, m):
@@ -291,7 +309,8 @@ def fig_mode_gallery(res, cfg, outdir, note, m):
         return
     rows = _mode_rows(res)
     widths = sorted(k[1] for k in sets)
-    xlim, ylim = _extent(list(sets.values()))
+    views = _views([[sets[(m, wa, 0)]] for wa in widths])
+    xlim, ylim = views[0]
     pw = 2.15
     ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
     fig, axes, cax = _field_grid(len(widths), 4, pw, ph)
@@ -299,13 +318,14 @@ def fig_mode_gallery(res, cfg, outdir, note, m):
             ("upper", "Upper supermode"), ("lower", "Lower supermode")]
     for i, wa in enumerate(widths):
         data, r = sets[(m, wa, 0)], rows[(m, wa, 0)]
+        xlim, ylim = views[i]
         for j, (name, title) in enumerate(cols):
             ax = axes[i, j]
             im = _field_panel(ax, data, name, xlim, ylim)
             label = f"n$_{{eff}}$ {data['modes'][name]['neff']:.3f}"
             if name in ("upper", "lower"):
                 label += f"   access {100 * r['share_' + name]:.0f} %"
-            ax.text(0.02, 0.95, label, transform=ax.transAxes, va="top", ha="left", fontsize=7.5, color=INK)
+            ax.text(0.02, 0.95, label, transform=ax.transAxes, va="top", ha="left", fontsize=7.5, color=ON_FIELD)
             if i == 0:
                 ax.set_title(title, fontsize=9)
         wb = data["meta"]["cores"][1][1]
@@ -332,16 +352,18 @@ def fig_supermodes_error(res, cfg, outdir, note):
                 picks.append((m, wa))
     if not picks:
         return
-    xlim, ylim = _extent([sets[(m, wa, e)] for m, wa in picks for e in errors])
+    views = _views([[sets[(m, wa, e)] for e in errors] for m, wa in picks])
+    xlim, ylim = views[0]
     pw = 2.4
     ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
     fig, axes, cax = _field_grid(len(picks), len(errors), pw, ph)
     for i, (m, wa) in enumerate(picks):
+        xlim, ylim = views[i]
         for j, e in enumerate(errors):
             ax, r = axes[i, j], rows[(m, wa, e)]
             im = _field_panel(ax, sets[(m, wa, e)], "upper", xlim, ylim)
             ax.text(0.02, 0.95, f"access {100 * r['share_upper']:.0f} %", transform=ax.transAxes,
-                    va="top", ha="left", fontsize=7.5, color=INK)
+                    va="top", ha="left", fontsize=7.5, color=ON_FIELD)
             if i == 0:
                 ax.set_title(f"ΔW = {e:+g} nm", fontsize=9)
         axes[i, 0].text(-0.03, 0.5, f"{COUPLER[m][0]}\nW$_a$ {wa:.0f} nm", transform=axes[i, 0].transAxes,

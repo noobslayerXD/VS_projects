@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 
 import modefields
 import plots
-from plots import COUPLER, INK, INK2, SURFACE, _field_panel, _ramp
+from plots import COUPLER, INK2, ON_FIELD, SURFACE, _field_panel, _ramp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMODE = os.path.join(HERE, "results_emode")
@@ -122,8 +122,8 @@ def fig_modes(res):
     rows = [(1, 320), (1, 480), (2, 320)]
     sets = [modefields.load(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
     info = {(r["m"], r["wa"]): r for r in res["modes"] if r["dw"] == 0}
-    xlim, ylim = plots._extent(sets, margin=380)
-    ylim = (-110 - 300, 110 + 300)
+    views = [xlim for xlim, _ in plots._views([[s] for s in sets], margin=380)]
+    xlim, ylim = views[0], (-110 - 300, 110 + 300)
     pw = (TEXTWIDTH - 1.25) / 4
     ph = pw * (ylim[1] - ylim[0]) / (xlim[1] - xlim[0])
     fig, axes, cax = plots._field_grid(len(rows), 4, pw, ph, left=0.82, right=0.55, top=0.2, bottom=0.05,
@@ -131,7 +131,7 @@ def fig_modes(res):
     cols = [("access", "Access strip alone"), ("bus", "Bus strip alone"),
             ("upper", "Upper supermode"), ("lower", "Lower supermode")]
     for i, ((m, wa), data) in enumerate(zip(rows, sets)):
-        r = info[(m, wa)]
+        r, xlim = info[(m, wa)], views[i]
         for j, (name, title) in enumerate(cols):
             ax = axes[i, j]
             im = _field_panel(ax, data, name, xlim, ylim)
@@ -140,7 +140,7 @@ def fig_modes(res):
             label = f"{data['modes'][name]['neff']:.3f}"
             if name in ("upper", "lower"):
                 label += f", {100 * r['share_' + name]:.0f} %"
-            ax.text(0.02, 0.94, label, transform=ax.transAxes, va="top", ha="left", fontsize=6.2, color=INK)
+            ax.text(0.02, 0.94, label, transform=ax.transAxes, va="top", ha="left", fontsize=6.2, color=ON_FIELD)
             if i == 0:
                 ax.set_title(title, fontsize=7.2, fontweight="bold", loc="left")
         wb = data["meta"]["cores"][1][1]
@@ -149,10 +149,11 @@ def fig_modes(res):
     plots._scale_bar(axes[-1, 0], xlim, ylim, length=500)
     for t in axes[-1, 0].texts[-1:]:
         t.set_fontsize(5.8)
-    cb = fig.colorbar(im, cax=cax, ticks=[-1, 0, 1])
-    cb.set_label("Re$(E_x)$, scaled to peak", color=INK2, fontsize=6.4)
+    cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1])
+    cb.set_label("$|E_x|$, scaled to peak", color=INK2, fontsize=6.4)
     cb.outline.set_visible(False)
     cb.ax.tick_params(length=0, labelsize=6.2)
+    cb.ax.grid(False)
     save(fig, "report_modes.pdf")
 
 
