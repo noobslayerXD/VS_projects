@@ -759,11 +759,12 @@ gap in Fig. 5a, the three couplers of Fig. 4, and the 320 and 480 nm widths that
   report says "within 1.5 nm" and "within 3.2 nm", bounds that also hold for the exact
   values from EMode's bus solves. S_m, taken at W_iso, moved by 0.04 to 0.31 %, which
   changes the last digit of S_a − S_m in four rows of Table 1. No tolerance and no
-  fold-change quoted in the report changed. Three results still come from before the fix
-  because redoing them needs EMode: the tolerance step, the matched step (its W_pm
-  differs from the new estimate by at most 0.023 nm) and the Dai benchmark (its W_iso is
-  1034.95 nm with the fix, 1035.45 nm in `results.json`). To bring them up to date:
-  `python adc_study.py --steps tolerance,validate,modes,matched,plots`.
+  fold-change quoted in the report changed. The `tolerance`, `validate`, `modes` and
+  `matched` steps were then rerun in EMode, so every result now comes from the corrected
+  code. That changed one tolerance-step point (TE0→TE1, 320 nm, ΔW = +10 nm: Δn_min
+  0.56 % lower after a scan from a new start) and re-solved the matched couplers at the
+  corrected W_pm (at most 0.023 nm away); no tolerance and no number in the report text
+  changed. The Dai benchmark's W_iso is now 1034.95 nm.
 - `--resolution 10` is now stored as the int 10, so it keeps matching the cache.
 - Fig. 7's title no longer states the hypothesis as a result ("Bend loss sets the lower
   limit on the access width"); it now reads "Bend loss of the access waveguide". The

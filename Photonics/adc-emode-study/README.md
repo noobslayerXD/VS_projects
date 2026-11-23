@@ -73,13 +73,13 @@ force new solves.
   put it 0.1 to 0.9 nm too wide: n_eff(W) is concave, so the chord lies below the
   curve. Checked against EMode solves of each bus strip at W_pm and W*, the PCHIP value
   is within 0.3 nm. The bus slope S_m, taken at W_iso, moved by 0.04 to 0.31 %. The
-  `design`, `modes` and `validate` steps were rerun from the cached EMode solves (no new
-  solve). Three results still come from the runs before the fix, because redoing them
-  needs new EMode solves: the `tolerance` step (S_m only sets where its first scan
-  starts), the `matched` step (W_pm, which it starts from, moved by at most 0.023 nm)
-  and the Dai benchmark in `validate` (its W_iso, 1035.45 nm in `results.json`, is
-  1034.95 nm with the fix; its W* and L_c do not depend on it). To bring them up to
-  date: `python adc_study.py --steps tolerance,validate,modes,matched,plots`.
+  `design`, `modes` and `validate` steps were first rerun from the cached EMode solves,
+  then `tolerance`, `validate`, `modes` and `matched` were rerun in EMode, so every
+  result in `results_emode/` now comes from the corrected code. That rerun changed one
+  point of the tolerance step (TE0→TE1, 320 nm access, dW = +10 nm: its anticrossing
+  scan started elsewhere and gave a 0.56 % lower dn_min) without moving any tolerance;
+  the matched couplers, rebuilt at a W_pm that moved by at most 0.023 nm, kept every
+  tolerance; and the Dai benchmark's W_iso is now 1034.95 nm.
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -253,8 +253,7 @@ Checks from the same run:
 - Wang et al. 2022 report 17.0 um for their conventional TE0→TE1 coupler with a
   400 nm access waveguide. This run gives L_c = 19.8 um.
 - Dai et al. 2013 use a 1020 nm bus for TM0→TM1 (400 nm access, 1500 nm, constant
-  indices 3.455 and 1.445). Isolated phase matching in this run gives 1035.0 nm
-  (1034.95 nm; see the 23 Nov note above).
+  indices 3.455 and 1.445). Isolated phase matching in this run gives 1034.95 nm.
 
 ### Mode-field check (`--steps modes`)
 
@@ -300,14 +299,14 @@ at W*. The `matched` step solves those couplers directly:
 
 | Coupler | Access (nm) | W_pm (nm) | Access share at dW = 0 | L_pm (um) | L_c at W* (um) | Unconverted at dW = 0 (dB) | Tolerance at W*, model (nm) | Tolerance at W_pm, fields (nm) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TE0→TE1 | 320 | 686.1 | 0.506 | 6.90 | 7.08 | -38.1 | ±8 | ±8 |
-| TE0→TE1 | 360 | 761.1 | 0.501 | 11.98 | 12.05 | -51.0 | ±5.75 | ±5.5 |
-| TE0→TE1 | 400 | 837.2 | 0.505 | 19.71 | 19.82 | -40.5 | ±4.5 | ±4.5 |
-| TE0→TE1 | 440 | 914.7 | 0.501 | 30.48 | 30.31 | -56.2 | ±3.75 | ±3.5 |
-| TE0→TE1 | 480 | 992.7 | 0.499 | 44.56 | 45.17 | -56.1 | ±3 | ±3 |
-| TE0→TE2 | 320 | 1057.6 | 0.505 | 8.29 | 8.48 | -39.5 | ±5.25 | ±5.25 |
-| TE0→TE2 | 360 | 1164.3 | 0.503 | 14.50 | 14.61 | -45.0 | ±3.5 | ±3.5 |
-| TE0→TE2 | 400 | 1275.6 | 0.501 | 23.98 | 24.02 | -55.8 | ±2.75 | ±2.5 |
+| TE0→TE1 | 320 | 686.1 | 0.506 | 6.90 | 7.08 | -38.5 | ±8 | ±8 |
+| TE0→TE1 | 360 | 761.1 | 0.501 | 11.98 | 12.05 | -52.2 | ±5.75 | ±5.5 |
+| TE0→TE1 | 400 | 837.2 | 0.505 | 19.71 | 19.82 | -40.9 | ±4.5 | ±4.5 |
+| TE0→TE1 | 440 | 914.7 | 0.501 | 30.48 | 30.31 | -58.2 | ±3.75 | ±3.5 |
+| TE0→TE1 | 480 | 992.7 | 0.499 | 44.56 | 45.17 | -55.1 | ±3 | ±3 |
+| TE0→TE2 | 320 | 1057.6 | 0.505 | 8.29 | 8.48 | -39.6 | ±5.25 | ±5.25 |
+| TE0→TE2 | 360 | 1164.3 | 0.503 | 14.50 | 14.61 | -45.3 | ±3.5 | ±3.5 |
+| TE0→TE2 | 400 | 1275.6 | 0.501 | 23.98 | 24.02 | -56.8 | ±2.75 | ±2.5 |
 | TE0→TE2 | 440 | 1389.6 | 0.500 | 37.15 | 37.26 | < -60 | ±2 | ±2.25 |
 | TE0→TE2 | 480 | 1505.6 | 0.500 | 54.39 | 54.20 | < -60 | ±1.75 | ±1.75 |
 
