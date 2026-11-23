@@ -58,6 +58,7 @@ import time
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator
+from scipy.optimize import brentq
 
 import modefields
 
@@ -111,6 +112,18 @@ def conversion(dn_min, dn_det, length, wavelength):
 
 def to_dB(x):
     return 10 * np.log10(np.maximum(x, 1e-6))
+
+
+def width_at_index(w, n, n_target):
+    """Width at which a sweep n(w), rising with w, reaches n_target, on the PCHIP curve
+    through the sweep points. A straight line between the points would put the width up
+    to about 1 nm too high here: n_eff(W) is concave, so the chord lies below the curve."""
+    w, n = np.asarray(w, dtype=float), np.asarray(n, dtype=float)
+    i = int(np.searchsorted(n, n_target))
+    if not 0 < i < len(n):
+        raise ValueError(f"n_eff = {n_target:.4f} is outside the sweep ({n[0]:.4f} to {n[-1]:.4f})")
+    f = PchipInterpolator(w, n)
+    return float(brentq(lambda x: float(f(x)) - n_target, w[i - 1], w[i]))
 
 
 def symmetric_tolerance(dw, residual_dB, limit_dB):
@@ -249,10 +262,11 @@ class Study:
         return out
 
     def _phase_matched_width(self, n_target, m):
+        """Width at which the isolated TEm mode has the index n_target (isolated phase matching)."""
         w, n, _ = self._curves()[m]
         if not (n.min() < n_target < n.max()):
             raise RuntimeError(f"TE{m} never reaches n_eff = {n_target:.3f}: widen bus_sweep")
-        return float(np.interp(n_target, n, w))
+        return width_at_index(w, n, n_target)
 
     def step_design(self):
         """Nominal design of both couplers for every access width."""
@@ -347,7 +361,7 @@ class Study:
         self.save()
 
     def step_bend(self):
-        """Bend loss of the access waveguide: the practical lower limit on its width."""
+        """Bend loss of the access waveguide, which could set a lower limit on its width."""
         cfg, wl = self.cfg, self.cfg["wavelength"]
         out = []
         print("\n[bend] loss of the access waveguide per 90 degree bend")
@@ -411,7 +425,7 @@ class Study:
             wb = np.arange(900, 1151, 50, dtype=float)
             n_b = np.array([self.n_iso(x, p["wavelength"], 1, "TM") for x in wb])
             ok = np.isfinite(n_b)
-            wb_iso = float(np.interp(n_a, n_b[ok], wb[ok]))
+            wb_iso = width_at_index(wb[ok], n_b[ok], n_a)
             ac = self.anticrossing(p["access"], p["gap"], p["wavelength"], wb_iso, "TM")
             lc = p["wavelength"] / (2 * ac["dn_min"])
             print(f"  bus width, isolated phase matching:   {wb_iso:7.1f} nm    paper {p['bus']} nm")
@@ -806,8 +820,8 @@ def main():
     args = ap.parse_args()
 
     cfg = dict(CFG, **(QUICK if args.quick else {}))
-    if args.resolution:
-        cfg["resolution"] = args.resolution
+    if args.resolution:                               # 10, not 10.0: the cache keys contain it as text
+        cfg["resolution"] = int(args.resolution) if args.resolution.is_integer() else args.resolution
     cfg["couplers"] = [int(c) for c in args.couplers.split(",")]
     if args.access:
         cfg["access_widths"] = [float(w) for w in args.access.split(",")]

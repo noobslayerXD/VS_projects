@@ -1,5 +1,5 @@
 """Figures for the ADC tolerance study. Reads the results dictionary written by adc_study.py
-and, for the mode figures (fig8 to fig12), the saved fields in <outdir>/modes/."""
+and, for fig8 to fig11, the mode fields saved in <outdir>/modes/."""
 import os
 
 import numpy as np
@@ -181,7 +181,7 @@ def fig_bend(res, cfg, outdir, note):
         ax.semilogy([b["wa"] for b in sel], [b["loss_dB_per_90deg"] for b in sel], "o-", label=f"R = {r / 1e3:.0f} µm")
     ax.set_xlabel("Access width W$_a$ (nm)")
     ax.set_ylabel("Loss per 90° bend (dB)")
-    ax.set_title("Bend loss sets the lower limit on the access width")
+    ax.set_title("Bend loss of the access waveguide")
     ax.legend()
     _save(fig, outdir, "fig7_bend_loss.png", note)
 

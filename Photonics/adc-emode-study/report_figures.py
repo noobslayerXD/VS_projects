@@ -30,7 +30,7 @@ EMODE = os.path.join(HERE, "results_emode")
 REPORT = os.path.join(HERE, "..", "mdm-design-study")
 FIGS = os.path.join(REPORT, "figures")
 GEN = os.path.join(REPORT, "generated")
-TEXTWIDTH = 6.5                                   # inches, the report's text width
+TEXTWIDTH = 6.5                                   # inches; LaTeX scales to the 17 cm (6.69 in) text width
 
 # DejaVu Sans ships with matplotlib, so the figures look the same on any machine.
 plt.rcParams.update({"font.family": "DejaVu Sans", "mathtext.fontset": "dejavusans",
@@ -280,7 +280,7 @@ def summary(res):
         p0 = [next(p for p in r["points"] if p["dw"] == 0) for r in mat]
         print("\nmatched: access share at dW = 0 %.4f to %.4f" % (min(r["share0"] for r in mat),
                                                                    max(r["share0"] for r in mat)))
-        print("  W_pm changed from the 'modes' estimate by at most %.3f nm"
+        print("  W_pm of the matched run and the current 'modes' estimate differ by at most %.3f nm"
               % max(abs(r["wb_pm"] - mod[(r["m"], r["wa"])]["wb_even_fields"]) for r in mat))
         print("  highest unconverted power at dW = 0: %.2f dB" % max(10 * np.log10(1 - p["eta"]) for p in p0))
         print("  largest |L_pm / L_c - 1|: %.2f %%" % max(100 * abs(r["Lc_pm"] / r["Lc_star"] - 1) for r in mat))
@@ -288,7 +288,8 @@ def summary(res):
         print("  largest two-mode residual: %.4f" % max(p["residual"] for r in mat for p in r["points"]))
         for m in (1, 2):
             sel = [r for r in mat if r["m"] == m]
-            print(f"  TE0-TE{m}: largest |W_pm - W_iso| {max(abs(r['wb_pm'] - r['wb_iso']) for r in sel):.3f} nm")
+            gaps = [r["wb_pm"] - des[(m, r["wa"])]["wb_iso"] for r in sel]
+            print(f"  TE0-TE{m}: W_pm - W_iso from {min(gaps):.3f} to {max(gaps):.3f} nm")
 
 
 def main():

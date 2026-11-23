@@ -42,10 +42,10 @@ Conventions taken from the docs
   effective index and loss_dB_per_m are referenced to that radius. bend_loss()
   rescales both to the radius of the core.
 
-Status: checked against the documentation and the official examples, but not yet
-run against a licensed EMode installation. Run
-    python adc_study.py --backend emode --steps check
-first: it does one single-waveguide solve and prints the result and the
+Status: checked against the documentation and the official examples, and run with a
+licensed EMode2D for every step of the study (results_emode/). After an EMode update,
+    python adc_study.py --steps check
+does one single-waveguide solve, one field read, and prints the result and the
 boundary condition EMode actually used.
 """
 import math

@@ -14,6 +14,7 @@ and a 200 nm gap. Everything is a 2D cross-section mode solve, so it runs in EMo
 | `modefields.py` | Mode fields: the checks done on them and the saved `modes/*.npz` files (`modefields.load`). |
 | `plots.py` | The figures. |
 | `report_figures.py` | Figures (PDF) and tables for the report in `../mdm-design-study/report.tex`, from `results_emode/`. |
+| `CODE_GUIDE.md` | What every function in the five scripts does, and every design decision with its reason. |
 | `../tests/` | In `Photonics/tests`: a test double of `emodeconnection` and two test scripts. The double accepts only the documented EMode arguments and answers with a made-up coupled-mode model; it is not a mode solver and none of the study's results come from it. Run the tests from `Photonics/`, for example `python tests/test_modes_step.py`. |
 | `results_emode/` | The EMode2D run (10 nm grid). |
 | `results_emode_quick/` | The coarse EMode2D run (`--quick`, 20 nm grid). |
@@ -67,6 +68,18 @@ force new solves.
   the deprecated `get('x')`, `get('Ex')`, ... calls. Its numbers come from a made-up
   coupled-mode model, so it tests the Python, not EMode's numbers.
 - The `matched` step has been run in EMode (`results_emode/`).
+- 23 Nov: the isolated phase-matching width W_iso is now found on the smooth (PCHIP)
+  curve through the width sweep. Straight lines between sweep points 50 nm apart had
+  put it 0.1 to 0.9 nm too wide: n_eff(W) is concave, so the chord lies below the
+  curve. Checked against EMode solves of each bus strip at W_pm and W*, the PCHIP value
+  is within 0.3 nm. The bus slope S_m, taken at W_iso, moved by 0.04 to 0.31 %. The
+  `design`, `modes` and `validate` steps were rerun from the cached EMode solves (no new
+  solve). Three results still come from the runs before the fix, because redoing them
+  needs new EMode solves: the `tolerance` step (S_m only sets where its first scan
+  starts), the `matched` step (W_pm, which it starts from, moved by at most 0.023 nm)
+  and the Dai benchmark in `validate` (its W_iso, 1035.45 nm in `results.json`, is
+  1034.95 nm with the fix; its W* and L_c do not depend on it). To bring them up to
+  date: `python adc_study.py --steps tolerance,validate,modes,matched,plots`.
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -219,12 +232,12 @@ colour per access width.
 | Coupler | Access (nm) | Bus W* (nm) | L_c (um) | kappa (1/um) | S_a - S_m (1e-3/nm) | Tolerance (nm) | First-order (nm) | Worst C-band (dB) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | TE0→TE1 | 320 | 697.2 | 7.1 | 0.222 | 2.02 | ±8 | ±9.5 | -17.1 |
-| TE0→TE1 | 360 | 766.7 | 12.0 | 0.130 | 1.77 | ±5.75 | ±6.5 | -16.2 |
+| TE0→TE1 | 360 | 766.7 | 12.0 | 0.130 | 1.76 | ±5.75 | ±6.5 | -16.2 |
 | TE0→TE1 | 400 | 840.8 | 19.8 | 0.079 | 1.42 | ±4.5 | ±4.75 | -16.5 |
-| TE0→TE1 | 440 | 917.0 | 30.3 | 0.052 | 1.12 | ±3.75 | ±4 | -16.4 |
+| TE0→TE1 | 440 | 917.0 | 30.3 | 0.052 | 1.11 | ±3.75 | ±4 | -16.4 |
 | TE0→TE1 | 480 | 994.5 | 45.2 | 0.035 | 0.87 | ±3 | ±3.5 | -16.6 |
-| TE0→TE2 | 320 | 1069.4 | 8.5 | 0.185 | 2.80 | ±5.25 | ±5.75 | -15.5 |
-| TE0→TE2 | 360 | 1169.9 | 14.6 | 0.108 | 2.40 | ±3.5 | ±3.75 | -15.3 |
+| TE0→TE2 | 320 | 1069.4 | 8.5 | 0.185 | 2.79 | ±5.25 | ±5.75 | -15.5 |
+| TE0→TE2 | 360 | 1169.9 | 14.6 | 0.108 | 2.39 | ±3.5 | ±3.75 | -15.3 |
 | TE0→TE2 | 400 | 1278.6 | 24.0 | 0.065 | 1.90 | ±2.75 | ±3 | -15.4 |
 | TE0→TE2 | 440 | 1391.7 | 37.3 | 0.042 | 1.48 | ±2 | ±2.5 | -15.7 |
 | TE0→TE2 | 480 | 1507.0 | 54.2 | 0.029 | 1.17 | ±1.75 | ±2 | -15.8 |
@@ -240,7 +253,8 @@ Checks from the same run:
 - Wang et al. 2022 report 17.0 um for their conventional TE0→TE1 coupler with a
   400 nm access waveguide. This run gives L_c = 19.8 um.
 - Dai et al. 2013 use a 1020 nm bus for TM0→TM1 (400 nm access, 1500 nm, constant
-  indices 3.455 and 1.445). Isolated phase matching in this run gives 1035.5 nm.
+  indices 3.455 and 1.445). Isolated phase matching in this run gives 1035.0 nm
+  (1034.95 nm; see the 23 Nov note above).
 
 ### Mode-field check (`--steps modes`)
 
@@ -260,20 +274,21 @@ But W*, the anticrossing minimum, is not where the supermodes are an even mixtur
 
 | Coupler | Access (nm) | W* (nm) | W_iso (nm) | Even mixture W_pm (nm) | Access share at W* | Unconverted at W*, dW = 0 (dB) |
 | --- | --- | --- | --- | --- | --- | --- |
-| TE0→TE1 | 320 | 697.2 | 686.3 | 686.1 | 0.37 | -11.6 |
-| TE0→TE1 | 360 | 766.7 | 760.6 | 761.1 | 0.41 | -15.0 |
-| TE0→TE1 | 400 | 840.8 | 837.0 | 837.2 | 0.43 | -17.2 |
-| TE0→TE1 | 440 | 917.0 | 914.3 | 914.7 | 0.45 | -19.4 |
-| TE0→TE1 | 480 | 994.5 | 992.2 | 992.7 | 0.45 | -20.5 |
-| TE0→TE2 | 320 | 1069.4 | 1055.3 | 1057.6 | 0.38 | -12.6 |
-| TE0→TE2 | 360 | 1169.9 | 1161.8 | 1164.3 | 0.43 | -16.6 |
-| TE0→TE2 | 400 | 1278.6 | 1273.6 | 1275.6 | 0.45 | -20.0 |
-| TE0→TE2 | 440 | 1391.7 | 1387.8 | 1389.6 | 0.46 | -22.0 |
-| TE0→TE2 | 480 | 1507.0 | 1503.6 | 1505.6 | 0.47 | -24.3 |
+| TE0→TE1 | 320 | 697.2 | 685.7 | 686.1 | 0.37 | -11.6 |
+| TE0→TE1 | 360 | 766.7 | 760.0 | 761.1 | 0.41 | -15.0 |
+| TE0→TE1 | 400 | 840.8 | 836.1 | 837.2 | 0.43 | -17.2 |
+| TE0→TE1 | 440 | 917.0 | 913.4 | 914.7 | 0.45 | -19.4 |
+| TE0→TE1 | 480 | 994.5 | 991.6 | 992.7 | 0.45 | -20.5 |
+| TE0→TE2 | 320 | 1069.4 | 1055.1 | 1057.6 | 0.38 | -12.6 |
+| TE0→TE2 | 360 | 1169.9 | 1161.2 | 1164.3 | 0.43 | -16.6 |
+| TE0→TE2 | 400 | 1278.6 | 1272.8 | 1275.6 | 0.45 | -20.0 |
+| TE0→TE2 | 440 | 1391.7 | 1387.3 | 1389.6 | 0.46 | -22.0 |
+| TE0→TE2 | 480 | 1507.0 | 1503.5 | 1505.6 | 0.47 | -24.3 |
 
 W_iso is the bus width at which the isolated strips have equal n_eff (step 2's
-"isolated" column). The even-mixture width from the fields lies within 0.53 nm of it
-for TE0→TE1 and within 2.5 nm for TE0→TE2, while W* is 1.4 to 12 nm wider. The
+"isolated" column, now on the PCHIP curve). The even-mixture width from the fields lies
+0.4 to 1.2 nm above it for TE0→TE1 and 2.1 to 3.0 nm above it for TE0→TE2 (W_iso is
+known to about 0.3 nm), while W* is 1.4 to 12 nm wider. The
 coupling weakens as the bus widens, and that moves the minimum of dn_s away from
 phase matching; the narrower the access waveguide, the stronger the coupling and the
 larger the shift. A coupler built at W* is therefore detuned before any fabrication
