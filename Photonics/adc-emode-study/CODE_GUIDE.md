@@ -133,14 +133,16 @@ conventions it relies on (checked against the EMode 1.0.8 documentation):
 Class attribute `name = "emode"`. It goes into the cache keys of the mode-field steps
 and into the saved metadata, so results from different solvers are never mixed.
 
-#### `__init__(resolution=10, h_si=220, side_margin=1500, vert_margin=1000, core="Si", clad="SiO2", simulation_name="adc_study", save_path=".", license_type="2d", verbose=False)`
+#### `__init__(resolution=10, h_si=220, side_margin=1500, vert_margin=1000, core="Si", clad="SiO2", simulation_name="adc_study", save_path=".", verbose=False)`
 Stores the grid step, silicon thickness, window margins and material names, sets
 `fixed_indices = None` (database materials), and stores three bend settings taken from
 EMode's bend examples: `pml_side = 1500` (outer-wall PML), `pml_vertical = 1000` (top and
 bottom PML) and `caustic_clearance = 500` (oxide between the radiation caustic and the
 PML). `last` holds details of the last solve for checking. Finally it opens the EMode
-session with `license_type='2d'`, which checks out the EMode2D licence directly
-(`'default'` would try EMode3D first).
+session with `license_type='2d'`, written in the call rather than taken as a parameter,
+because the study only ever uses EMode2D functions. `'2d'` checks out the EMode2D licence
+directly; `'3d'` would fail on an account without an EMode3D licence, and `'default'`
+takes a 3D licence first when one is available.
 
 #### `_even(length)`
 Rounds a window length up to a whole, even number of grid cells:

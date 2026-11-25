@@ -58,8 +58,7 @@ class EModeSolver:
     name = "emode"
 
     def __init__(self, resolution=10, h_si=220, side_margin=1500, vert_margin=1000,
-                 core="Si", clad="SiO2", simulation_name="adc_study", save_path=".",
-                 license_type="2d", verbose=False):
+                 core="Si", clad="SiO2", simulation_name="adc_study", save_path=".", verbose=False):
         self.resolution = resolution      # nm, grid step in x and y
         self.h_si = h_si                  # nm, silicon thickness
         self.side_margin = side_margin    # nm, cladding left/right of the outermost core
@@ -72,9 +71,9 @@ class EModeSolver:
         self.pml_vertical = 1000          # nm, PML on the top and bottom walls of the bend
         self.caustic_clearance = 500      # nm, oxide between the radiation caustic and the PML
         self.last = {}                    # details of the last solve, for checking
-        # license_type='2d' checks out the EMode2D licence directly ('default' tries 3D first).
-        self.em = emc.EMode(simulation_name=simulation_name, save_path=save_path,
-                            license_type=license_type)
+        # Every call here is an EMode2D function, so ask for exactly that licence: '3d' would
+        # fail without an EMode3D licence, and 'default' takes a 3D licence first if there is one.
+        self.em = emc.EMode(simulation_name=simulation_name, save_path=save_path, license_type="2d")
 
     # ------------------------------------------------------------------ helpers
     def _even(self, length):
