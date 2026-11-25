@@ -866,6 +866,14 @@ included, and both test scripts pass.
   field analysis agree to rounding (shares to 4 × 10⁻¹⁶). Because the key format changed,
   the next run solves the `modes` and `matched` steps again (about 90 and 150 solves) and
   reuses every other cached solve.
+- **The EMode rerun** (same day) did exactly that: no new straight or bend solve, and no
+  W_pm correction. Against the previous run the access shares moved by at most
+  6.5 × 10⁻⁵, W_pm by at most 0.006 nm and L_pm by at most 0.21 nm, while the two-mode
+  residuals and every tolerance stayed the same. The residual does not depend on how
+  each mode is scaled, the share does: EMode's 1 W scaling and the old power sum over
+  the cell centres differ very slightly. One number in the report changed in its last
+  digit, the unconverted power at W* of the 480 nm TE0→TE2 coupler (−24.3 to −24.2 dB,
+  Table 1 and the text).
 
 The tests in `../tests/` (a test double of `emodeconnection` and two test scripts) are not
 part of the four scripts. They run the whole study through the EMode code path on a

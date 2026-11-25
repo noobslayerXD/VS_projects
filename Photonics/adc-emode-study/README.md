@@ -86,10 +86,15 @@ force new solves.
   solver option; and the functions of `modefields.py` are now in `adc_study.py`. Rerun
   from the EMode cache, every step that reads no fields gives byte-identical results,
   and on the test double the field analysis agrees with the old one to rounding. This
-  version has not run in EMode yet. Its first run solves the `modes` and `matched`
-  steps again (about 240 solves), because their cache keys changed; every other solve
-  comes from the cache. `python adc_study.py --steps check` reads one field the new way
-  in seconds, so run it first.
+  version has since run in EMode (`results_emode/`): the `modes` and `matched` steps
+  were solved again (150 new solves for `matched`, no W_pm correction needed) and every
+  other solve came from the cache. Against the previous run, the access shares moved by
+  at most 6.5e-5, W_pm by at most 0.006 nm and L_pm by at most 0.21 nm; the two-mode
+  residuals and every tolerance are unchanged. The shares move because EMode's 1 W
+  scaling and the study's old power sum over the cell centres differ very slightly; the
+  residuals do not depend on how the modes are scaled. Of the numbers in the report,
+  one changed in its last digit: the unconverted power at W* of the TE0→TE2 coupler
+  with a 480 nm access waveguide, -24.3 to -24.2 dB (Table 1 and the text).
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -292,7 +297,7 @@ But W*, the anticrossing minimum, is not where the supermodes are an even mixtur
 | TE0→TE2 | 360 | 1169.9 | 1161.2 | 1164.3 | 0.43 | -16.6 |
 | TE0→TE2 | 400 | 1278.6 | 1272.8 | 1275.6 | 0.45 | -20.0 |
 | TE0→TE2 | 440 | 1391.7 | 1387.3 | 1389.6 | 0.46 | -22.0 |
-| TE0→TE2 | 480 | 1507.0 | 1503.5 | 1505.6 | 0.47 | -24.3 |
+| TE0→TE2 | 480 | 1507.0 | 1503.5 | 1505.6 | 0.47 | -24.2 |
 
 W_iso is the bus width at which the isolated strips have equal n_eff (step 2's
 "isolated" column, now on the PCHIP curve). The even-mixture width from the fields lies
@@ -322,7 +327,7 @@ at W*. The `matched` step solves those couplers directly:
 
 The W_pm estimated in the `modes` step needed no correction: one solve at each found
 an even mixture. Rebuilt there, every coupler leaves less than -38 dB unconverted at
-dW = 0 (against -11.6 to -24.3 dB at W*), L_pm differs from L_c by less than 3 %, and
+dW = 0 (against -11.6 to -24.2 dB at W*), L_pm differs from L_c by less than 3 %, and
 the tolerance from the fields agrees with the model's to within one 0.25 nm step. The
 model's tolerances are therefore right for couplers built at W_pm; what the
 minimum-splitting rule gets wrong is the bus width.
