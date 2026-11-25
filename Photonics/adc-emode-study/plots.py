@@ -273,7 +273,7 @@ def _field_grid(nrows, ncols, pw, ph, left=1.2, right=1.05, top=0.78, bottom=0.1
 def _field_colorbar(fig, im, cax):
     cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1])
     cb.set_label("|E$_x$|, each mode scaled to its peak")
-    cb.outline.set_visible(False)
+    cb.ax.spines["outline"].set_visible(False)           # = cb.outline, which matplotlib 3.10 types as Spines
     cb.ax.tick_params(length=0)
     cb.ax.grid(False)                                    # no style grid line across the scale
 

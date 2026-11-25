@@ -151,7 +151,7 @@ def fig_modes(res):
         t.set_fontsize(5.8)
     cb = fig.colorbar(axes[0, 0].images[0], cax=cax, ticks=[0, 0.5, 1])
     cb.set_label("$|E_x|$, scaled to peak", fontsize=6.4)
-    cb.outline.set_visible(False)
+    cb.ax.spines["outline"].set_visible(False)    # = cb.outline, which matplotlib 3.10 types as Spines
     cb.ax.tick_params(length=0, labelsize=6.2)
     cb.ax.grid(False)
     save(fig, "report_modes.pdf")

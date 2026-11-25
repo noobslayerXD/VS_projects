@@ -692,7 +692,10 @@ thin colour-bar axis in the right margin, centred on the panels.
 The colour bar: ticks at 0, 0.5 and 1, the label "|Ex|, each mode scaled to its peak", no
 outline and no grid line across it. The figures pass the first panel's image,
 `axes[0, 0].images[0]`; every panel uses the same scale (`plasma`, 0 to 1), so any of
-them gives the same bar.
+them gives the same bar. The outline is hidden through `cb.ax.spines["outline"]`, which
+is the same object as `cb.outline`. matplotlib 3.10's type hints wrongly call
+`cb.outline` a `Spines` (the collection of an axes' spines; fixed in 3.11), so Pylance
+rejected `cb.outline.set_visible(False)`.
 
 #### `fig_mode_gallery(res, cfg, outdir, note, m)` → `fig8_…`, `fig9_…`
 For one coupler type, every access width at ΔW = 0: the access strip alone, the bus strip
@@ -756,7 +759,7 @@ Three couplers: TE0→TE1 at 320 and 480 nm (the narrowest and widest access) an
 at 320 nm. Each row shows the access strip alone, the bus strip alone and the two
 supermodes, using the same panel, view and scale-bar functions as `plots.py`. The
 vertical window is the silicon ± 300 nm, and the colour bar takes its scale from the
-first panel's image.
+first panel's image and hides its outline as `_field_colorbar` does.
 
 #### `fig_fieldchecks(res)` → Fig. 5, `report_fieldchecks.pdf`
 (a) the access mode's evanescent tail (from the TE0→TE1 files; the bus starts 200 nm from
@@ -829,6 +832,10 @@ included, and both test scripts pass.
   tuple; and EMode's answers go through `np.asarray` before numpy reads them
   (`_clad_index`, the `PML_indices` in `bend_loss`), as `_read` already did. Pylance
   shows the last two only on a machine where EMode's package is installed.
+- **The colour-bar outline** is hidden through `cb.ax.spines["outline"]` instead of
+  `cb.outline`, in `_field_colorbar` and `fig_modes`: with matplotlib 3.10, whose type
+  hints call `cb.outline` a `Spines`, Pylance reported "Object of type "Spine" is not
+  callable" in `report_figures.py`. Same object, same figures.
 - **Variables set before they are used** (Pylance's "possibly unbound"): `anticrossing`
   does its first scan before the re-centring loop, `step_matched` its first check before
   the correction loop, and `bend_loss` keeps the first try's outcome in `result`. The
@@ -891,11 +898,12 @@ Seven `except Exception` blocks are deliberate, and ruff's rule against broad ca
 | `Study.step_modes` | A saved field file that cannot be read is solved again. |
 
 **Pylance** (type checker, `"python.analysis.typeCheckingMode": "standard"` in this
-repository's VS Code settings) reports nothing in the five scripts or the tests, checked
-with EMode's package (`emodeconnection` 1.1.25) installed. On a machine without it, the
-only report is that `emodeconnection` cannot be imported. The same checks can be run
-outside VS Code with Pyright, the checker inside Pylance, from `Photonics/` in the Python
-environment where EMode is installed:
+repository's VS Code settings) reports nothing in the five scripts or the tests. This was
+checked with EMode's package (`emodeconnection` 1.1.25) installed, both with matplotlib
+3.10.8 and with 3.11.2. On a machine without EMode's package, the only report is that
+`emodeconnection` cannot be imported. The same checks can be run outside VS Code with
+Pyright, the checker inside Pylance, from `Photonics/` in the Python environment where
+EMode is installed:
 
 ```
 pip install pyright
