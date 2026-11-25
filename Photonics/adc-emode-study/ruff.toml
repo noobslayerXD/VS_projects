@@ -1,4 +1,4 @@
 # Ruff settings for the study scripts: ruff's default rules, with lines of up to 120
 # characters. This file also makes this folder ruff's project root, so the study's own
-# modules (plots, modefields, ...) count as local imports wherever ruff is started from.
+# modules (adc_study, plots, ...) count as local imports wherever ruff is started from.
 line-length = 120

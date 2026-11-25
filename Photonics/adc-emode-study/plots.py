@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 
+from adc_study import load_modes
+
 plt.switch_backend("Agg")                 # draw to files only: no windows, works without a display
 
 # Colours are matplotlib's defaults: C0 for TE0->TE1, C1 for TE0->TE2, C<i> for the i-th access
@@ -189,12 +191,11 @@ def fig_bend(res, cfg, outdir, note):
 # ------------------------------------------------------------------ mode fields
 def _mode_sets(res, outdir):
     """The saved mode files that exist, keyed (coupler, access width, width error)."""
-    import modefields
     sets = {}
     for r in res.get("modes", []):
         path = os.path.join(outdir, r["file"])
         if os.path.exists(path):
-            sets[(r["m"], r["wa"], r["dw"])] = modefields.load(path)
+            sets[(r["m"], r["wa"], r["dw"])] = load_modes(path)
     return sets
 
 

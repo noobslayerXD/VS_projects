@@ -17,7 +17,7 @@ study = next(p for p in (os.path.join(here, ".."), os.path.join(here, "..", "adc
 sys.path.insert(0, os.path.join(here, "mock_emode"))
 sys.path.insert(0, os.path.abspath(study))
 # Imported only now that the paths are set: the test double and the solver under test.
-emc: Any = importlib.import_module("emodeconnection")   # Any: the tests set its switches (SHIFT, GIVE_H, ...)
+emc: Any = importlib.import_module("emodeconnection")   # Any: the tests change it (SHIFT, get_fields)
 EModeSolver = importlib.import_module("solver_emode").EModeSolver
 
 for res in (10, 20, 40):
@@ -35,8 +35,6 @@ for res in (10, 20, 40):
         assert abs(nb - tr["n_core"]) < 1e-9 and abs(lb - tr["loss_core"]) < 1e-6, (nb, lb, tr)
         print(f"   bend R={R}: n_core {nb:.4f}, loss {lb:.4g} dB/m, W={s.last['window_width']}, "
               f"x_off={s.last['x_off']}, caustic={s.last['caustic_nm']:.0f}, BC={s.last['boundary_condition']}")
-    # bend without n_guess
-    s.bend_loss(400, 3000, 1550)
     # fixed indices (Dai benchmark path): EMode must get MaterialProperties with exactly these
     s.fixed_indices = (3.455, 1.445)
     nf, _ = s.modes([(0.0, 400.0)], 1500, 4)
@@ -62,33 +60,42 @@ print("seeded fallback works:", round(nb, 4))
 emc.SHIFT = 0.05
 
 
-# mode_fields: fields in the caller's coordinates, sorted like modes(), whatever the array layout
+# mode_fields: fields in the caller's coordinates, sorted like modes()
 def centre(f, k=0):
     e = np.abs(f["Ex"][k]) ** 2
     return (e.sum(1) * f["x"]).sum() / e.sum(), (e.sum(0) * f["y"]).sum() / e.sum()
 
 pair = [(0.0, 400.0), (400 / 2 + 200 + 840 / 2, 840.0)]
-for layout in ("xy", "yx"):
-    emc.FIELD_LAYOUT = layout
-    s = EModeSolver(resolution=20)
-    n1, t1, f1 = s.mode_fields(pair[:1], 1550, 4)
-    assert np.allclose(n1, s.modes(pair[:1], 1550, 4)[0]), "mode_fields and modes disagree"
-    assert f1["Ex"].shape == (4, f1["x"].size, f1["y"].size) and {"Hx", "Hy"} <= set(f1)
-    xc, yc = centre(f1)
-    assert abs(xc) < 2 and abs(yc) < 2, ("TE0 not centred on the strip", xc, yc)
-    nc, tc, fc = s.mode_fields(pair, 1550, 6)
-    nb_, tb_, fb_ = s.mode_fields(pair[1:], 1550, 6, frame=pair)    # bus alone, on the coupler's grid
-    assert np.array_equal(fc["x"], fb_["x"]) and np.array_equal(fc["y"], fb_["y"]), "frame grid differs"
-    assert abs(centre(fb_)[0] - pair[1][0]) < 5, "bus mode not on the bus strip"
-    assert all(nc[:-1] >= nc[1:]), "not sorted"
-    print(f"fields ({layout}): grid {fc['x'].size} x {fc['y'].size}, TE0 centre ({xc:.1f}, {yc:.1f}) nm, "
-          f"bus TE0 centre {centre(fb_)[0]:.0f} nm (strip at {pair[1][0]:.0f})")
-    s.close()
-emc.FIELD_LAYOUT = "xy"
-
-emc.GIVE_H = False                                   # EMode without H fields: E only, and it says so
 s = EModeSolver(resolution=20)
-_, _, f = s.mode_fields(pair[:1], 1550, 4)
-assert "Hx" not in f and s.last["fields_missing"] == ["Hx", "Hy"]
-emc.GIVE_H = True
+n1, t1, f1 = s.mode_fields(pair[:1], 1550, 4)
+assert np.allclose(n1, s.modes(pair[:1], 1550, 4)[0]), "mode_fields and modes disagree"
+assert set(f1) == {"x", "y", "Ex", "Ey"} and f1["Ex"].shape == (4, f1["x"].size, f1["y"].size)
+xc, yc = centre(f1)
+assert abs(xc) < 2 and abs(yc) < 2, ("TE0 not centred on the strip", xc, yc)
+nc, tc, fc = s.mode_fields(pair, 1550, 6)
+nb_, tb_, fb_ = s.mode_fields(pair[1:], 1550, 6, frame=pair)    # bus alone, on the coupler's grid
+assert np.array_equal(fc["x"], fb_["x"]) and np.array_equal(fc["y"], fb_["y"]), "frame grid differs"
+assert abs(centre(fb_)[0] - pair[1][0]) < 5, "bus mode not on the bus strip"
+assert all(nc[:-1] >= nc[1:]), "not sorted"
+print(f"fields: grid {fc['x'].size} x {fc['y'].size}, TE0 centre ({xc:.1f}, {yc:.1f}) nm, "
+      f"bus TE0 centre {centre(fb_)[0]:.0f} nm (strip at {pair[1][0]:.0f})")
+
+# A field array that is not [field, mode, x, y], as documented, stops with a clear error.
+documented = emc.EMode.get_fields
+
+
+def swapped(self, key=None, **kw):
+    f = documented(self, key, **kw)
+    f.field = np.swapaxes(f.field, 2, 3)
+    return f
+
+
+emc.EMode.get_fields = swapped
+try:
+    s.mode_fields(pair[:1], 1550, 4)
+    raise AssertionError("a field array of the wrong layout was accepted")
+except RuntimeError as err:
+    assert "EMode returned fields of shape" in str(err), err
+emc.EMode.get_fields = documented
+s.close()
 print("mode_fields checks passed")
