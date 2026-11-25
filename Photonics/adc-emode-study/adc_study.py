@@ -35,12 +35,12 @@ that share power between the two strips. Their index difference is dn_s.
 
 Usage
 -----
-    python adc_study.py --backend emode --steps check     # one solve, tests the EMode link
-    python adc_study.py --backend emode --quick           # coarse first look (minutes)
-    python adc_study.py --backend emode                   # full study
-    python adc_study.py --backend emode --steps modes,plots   # add the mode fields to a finished run
-    python adc_study.py --backend emode --steps matched,plots # tolerance with the bus at the phase-matched width
-    python adc_study.py --backend emode --steps plots     # redraw figures from saved results
+    python adc_study.py --steps check            # one solve and one field read: tests the EMode link
+    python adc_study.py --quick                  # coarse first look (minutes)
+    python adc_study.py                          # full study
+    python adc_study.py --steps modes,plots      # add the mode fields to a finished run
+    python adc_study.py --steps matched,plots    # tolerance with the bus at the phase-matched width
+    python adc_study.py --steps plots            # redraw figures from saved results
 
 Steps: check, sweep, design, tolerance, wavelength, bend, validate, modes, matched, plots.
 Every mode solve is done by EMode2D (solver_emode.py). Results go to
@@ -59,8 +59,6 @@ from typing import Any, cast
 import numpy as np
 from scipy.interpolate import PchipInterpolator
 from scipy.optimize import brentq
-
-import modefields
 
 # ----------------------------------------------------------------------------
 # Study parameters (all lengths in nm). Edit these.
@@ -147,6 +145,113 @@ def symmetric_tolerance(dw, residual_dB, limit_dB):
     return tol
 
 
+# ----------------------------------------------------------------------------
+# Mode fields: the checks done on them and the saved field files
+# ----------------------------------------------------------------------------
+# A mode is {"Ex": array (x, y), "Ey": array (x, y)}, its transverse electric field on
+# the cell centres x, y (nm) of one grid, as EMode gives it: scaled to carry 1 W.
+#
+# A saved set, modes/TE0-TE<m>_wa<access>_dw<error>.npz, holds four modes of one
+# coupler geometry on one grid (x along the chip, y up; the silicon from -h_si/2 to
+# +h_si/2, the access strip centred on x = 0):
+#     access   the access strip alone (TE0), solved in the coupler's window
+#     bus      the bus strip alone (TE1 or TE2), solved in the coupler's window
+#     upper    the coupler supermode with the higher effective index
+#     lower    the coupler supermode with the lower effective index
+# Each mode is multiplied by a phase that makes it real (a lossless mode is real up to
+# one phase factor): the access mode with Ex > 0 at the centre of the access strip, the
+# bus mode with Ex > 0 in its lobe next to the gap, and the supermodes with their
+# access-mode part in phase with the stored access mode, so the sign of their bus lobe
+# next to the gap shows whether the two strips oscillate in phase (+) or in anti-phase
+# (-). The files keep cfg["mode_crop"] nm of cladding around the strips; the checks
+# are done on the full window before cropping.
+#     data = load_modes("results_emode/modes/TE0-TE1_wa320_dw+0.npz")
+#     data["x"], data["y"], data["modes"]["upper"]["Ex"], data["meta"]
+def cell_sizes(v):
+    """Width of the grid cell around each point of a 1D axis (nm). The cell walls lie
+    halfway between neighbouring points, the two outer walls half a spacing outside."""
+    edges = np.concatenate(([1.5 * v[0] - 0.5 * v[1]], (v[:-1] + v[1:]) / 2, [1.5 * v[-1] - 0.5 * v[-2]]))
+    return np.diff(edges)
+
+
+def inner(f, g, w):
+    """<f, g>: the integral of conj(E_f) . E_g over the transverse electric field
+    (w: the area of each grid cell)."""
+    return complex(np.sum((np.conj(f["Ex"]) * g["Ex"] + np.conj(f["Ey"]) * g["Ey"]) * w))
+
+
+def decompose(s, a, b, w):
+    """Fit a supermode with the two strip modes: s ~ alpha a + beta b.
+
+    Least squares on the transverse electric field, with a and b as EMode gives them
+    (1 W each). Returns (alpha, beta, share, residual):
+        share     |alpha|^2 / (|alpha|^2 + |beta|^2), the supermode's share of power
+                  in the a-mode (0.5: an even mixture, as at phase matching)
+        residual  the fraction of the supermode's field that a and b do not explain
+                  (0 for a pure two-mode mixture)
+    """
+    gram = np.array([[inner(a, a, w), inner(a, b, w)], [inner(b, a, w), inner(b, b, w)]])
+    rhs = np.array([inner(a, s, w), inner(b, s, w)])
+    alpha, beta = np.linalg.solve(gram, rhs)
+    d = {k: s[k] - alpha * a[k] - beta * b[k] for k in ("Ex", "Ey")}
+    residual = inner(d, d, w).real / inner(s, s, w).real
+    share = abs(alpha) ** 2 / (abs(alpha) ** 2 + abs(beta) ** 2)
+    return complex(alpha), complex(beta), float(share), float(residual)
+
+
+def phase_at(f, x, y, point):
+    """Phase factor that makes Ex real and positive at the grid point nearest `point`."""
+    v = f["Ex"][int(np.argmin(np.abs(x - point[0]))), int(np.argmin(np.abs(y - point[1])))]
+    return np.conj(v) / abs(v)
+
+
+def rotated(f, phase):
+    """The mode multiplied by a phase factor."""
+    return {k: v * phase for k, v in f.items()}
+
+
+def level_dB(f, x, y, x0):
+    """|Ex|^2 at x0 along the middle of the silicon (y nearest 0), relative to its peak
+    on that line (dB)."""
+    v = np.abs(f["Ex"][:, int(np.argmin(np.abs(y)))]) ** 2
+    return float(10 * np.log10(max(np.interp(x0, x, v / v.max()), 1e-30)))
+
+
+def edge_fraction(f, x, y, w, depth=300.0):
+    """Share of |E_t|^2 within `depth` nm of the window walls. It should be tiny:
+    otherwise the walls of the simulation window are distorting the mode."""
+    e = (np.abs(f["Ex"]) ** 2 + np.abs(f["Ey"]) ** 2) * w
+    keep = np.outer((x > x.min() + depth) & (x < x.max() - depth),
+                    (y > y.min() + depth) & (y < y.max() - depth))
+    return float(1 - e[keep].sum() / e.sum())
+
+
+def save_modes(path, x, y, modes, meta, xlim, ylim):
+    """Save the four modes of one geometry, cropped to xlim, ylim (nm).
+
+    modes : {name: {"Ex": ..., "Ey": ...}} on the grid x, y, already phase aligned.
+    meta  : JSON-serialisable dictionary stored with them.
+    """
+    ix = (x >= xlim[0]) & (x <= xlim[1])
+    iy = (y >= ylim[0]) & (y <= ylim[1])
+    arrays = {"x": x[ix].astype(np.float32), "y": y[iy].astype(np.float32)}
+    for name, f in modes.items():
+        for comp in ("Ex", "Ey"):
+            v = f[comp][np.ix_(ix, iy)]
+            real = np.abs(np.imag(v)).max() <= 1e-3 * np.abs(v).max()
+            arrays[f"{name}_{comp}"] = np.real(v).astype(np.float32) if real else v.astype(np.complex64)
+    arrays["meta"] = np.array(json.dumps(meta))
+    np.savez_compressed(path, **arrays)
+
+
+def load_modes(path):
+    """Read a saved set: {"x", "y", "meta", "modes": {name: {"Ex", "Ey", "neff", "te"}}}."""
+    with np.load(path) as z:
+        meta = json.loads(str(z["meta"]))
+        modes = {n: {"Ex": z[f"{n}_Ex"], "Ey": z[f"{n}_Ey"], **meta["modes"][n]} for n in meta["modes"]}
+        return {"x": z["x"].astype(float), "y": z["y"].astype(float), "meta": meta, "modes": modes}
+
+
 class Study:
     def __init__(self, solver, cfg, outdir):
         self.s, self.cfg, self.out = solver, cfg, outdir
@@ -231,7 +336,7 @@ class Study:
 
     # -------------------------------------------------------------------- steps
     def step_check(self):
-        """One single-strip solve: use it to test the link to the solver."""
+        """One single-strip solve and one field read: use it to test the link to EMode."""
         wa, wl = self.cfg["baseline"], self.cfg["wavelength"]
         t = time.time()
         neff, te = self.s.modes([(0.0, float(wa))], wl, 4)
@@ -239,19 +344,13 @@ class Study:
         for n, f in zip(neff, te):
             print(f"   n_eff = {n:.4f}   TE fraction = {f:.2f}")
         print("Expected: a TE0 mode with n_eff near 2.2 and TE fraction near 1, then a TM0 mode near 1.7.")
-        if hasattr(self.s, "describe"):
-            print(self.s.describe())
-        if hasattr(self.s, "mode_fields"):                # the field reading used by the 'modes' step
-            _, _, f = self.s.mode_fields([(0.0, float(wa))], wl, 4)
-            x, y, e = f["x"], f["y"], np.abs(f["Ex"][0]) ** 2
-            xc, yc = (round(float((e.sum(axis) * v).sum() / e.sum())) + 0 for axis, v in ((1, x), (0, y)))
-            comps = [k for k in ("Ex", "Ey", "Hx", "Hy") if k in f]
-            print(f"Fields: {x.size} x {y.size} points, x {x[0]:.0f} to {x[-1]:.0f} nm, "
-                  f"y {y[0]:.0f} to {y[-1]:.0f} nm; components {', '.join(comps)}")
-            print(f"  TE0 |Ex|^2 is centred at x = {xc:.0f} nm, y = {yc:.0f} nm "
-                  "(expected 0, 0: the centre of the strip)")
-            if "Hx" not in f:
-                print("  No H field: the 'modes' step will weight the modes by their field norm, not by power.")
+        print(self.s.describe())
+        _, _, f = self.s.mode_fields([(0.0, float(wa))], wl, 4)   # the field reading used by the 'modes' step
+        x, y, e = f["x"], f["y"], np.abs(f["Ex"][0]) ** 2
+        xc, yc = (round(float((e.sum(axis) * v).sum() / e.sum())) + 0 for axis, v in ((1, x), (0, y)))
+        print(f"Fields: {x.size} x {y.size} points, x {x[0]:.0f} to {x[-1]:.0f} nm, y {y[0]:.0f} to {y[-1]:.0f} nm")
+        print(f"  TE0 |Ex|^2 is centred at x = {xc:.0f} nm, y = {yc:.0f} nm "
+              "(expected 0, 0: the centre of the strip)")
 
     def step_sweep(self):
         """Isolated strips: n_eff of TE0, TE1, TE2 against width, and the slopes dn/dW."""
@@ -483,12 +582,9 @@ class Study:
           edge      share of a mode's field within 300 nm of the window walls.
           tail      access mode alone: |Ex|^2 at the bus edge on the mid-plane, relative
                     to its peak. The coupling strength follows this tail.
-        Fields go to <out>/modes/*.npz (read them with modefields.load), the checks to
+        Fields go to <out>/modes/*.npz (read them with load_modes), the checks to
         results.json ('modes') and modes_summary.csv.
         """
-        if not hasattr(self.s, "mode_fields"):
-            print("\n[modes] skipped: this solver does not return fields")
-            return
         cfg, gap = self.cfg, self.cfg["gap"]
         folder = os.path.join(self.out, "modes")
         os.makedirs(folder, exist_ok=True)
@@ -506,13 +602,13 @@ class Study:
                 tag = f"TE0-TE{d['m']}_wa{d['wa']:g}_dw{dw:+g}"
                 path = os.path.join(folder, tag + ".npz")
                 key = "|".join(str(v) for v in (
-                    self.s.name, self.s.resolution, self.s.side_margin, self.s.vert_margin, self.s.h_si,
+                    self.s.resolution, self.s.side_margin, self.s.vert_margin, self.s.h_si,
                     cfg["wavelength"], self.s.fixed_indices, cfg["mode_crop"],
                     ";".join(f"{c:.2f},{w:.2f}" for c, w in cores)))
                 meta = None
                 if os.path.exists(path):
                     try:
-                        meta = modefields.load(path)["meta"]
+                        meta = load_modes(path)["meta"]
                     except Exception:  # an unreadable file is solved again  # noqa: BLE001
                         meta = None
                     if meta is not None and meta.get("key") != key:
@@ -554,38 +650,35 @@ class Study:
         k = int(np.argmin(np.abs((nc[gc[:-1]] + nc[gc[1:]]) / 2 - n_a)))
         iu, il = gc[k], gc[k + 1]
 
-        comps = ("Ex", "Ey", "Hx", "Hy") if all("Hx" in f and "Hy" in f for f in (fa, fb, fc)) else ("Ex", "Ey")
-        w = modefields.weights(x, y)
+        w = np.outer(cell_sizes(x), cell_sizes(y))       # area of each grid cell (nm^2)
 
-        def mode(f, i):
-            return modefields.normalised({c: f[c][i] for c in comps}, w)
+        def mode(f, i):                                   # mode i of a solve, as EMode gives it (1 W)
+            return {"Ex": f["Ex"][i], "Ey": f["Ey"][i]}
 
         (x_acc, _), (x_bus, w_bus) = cores
         lobe = (x_bus - w_bus / 2 + w_bus / (2 * (m + 1)), 0.0)   # centre of the bus lobe next to the gap
         acc, bus = mode(fa, ga[0]), mode(fb, gb[m])
-        acc = modefields.rotated(acc, modefields.phase_at(acc, x, y, (x_acc, 0.0)))
-        bus = modefields.rotated(bus, modefields.phase_at(bus, x, y, lobe))
+        acc = rotated(acc, phase_at(acc, x, y, (x_acc, 0.0)))
+        bus = rotated(bus, phase_at(bus, x, y, lobe))
         out, checks = {"access": acc, "bus": bus}, {}
         for name, i in (("upper", iu), ("lower", il)):
             sup = mode(fc, i)
-            alpha, beta, share, residual = modefields.decompose(sup, acc, bus, w)
-            out[name] = modefields.rotated(sup, np.conj(alpha) / abs(alpha))
+            alpha, beta, share, residual = decompose(sup, acc, bus, w)
+            out[name] = rotated(sup, np.conj(alpha) / abs(alpha))
             checks[name] = {"share": share, "residual": residual,
                             "bus_sign": int(np.sign(np.real(beta * np.conj(alpha))))}
         picked = {"access": (na, ta, ga[0]), "bus": (nb, tb, gb[m]), "upper": (nc, tc, iu), "lower": (nc, tc, il)}
-        meta = {"key": key, "tag": tag, "backend": s.name, "resolution": s.resolution, "wavelength": wl, "h_si": s.h_si,
+        meta = {"key": key, "tag": tag, "resolution": s.resolution, "wavelength": wl, "h_si": s.h_si,
                 "coupler": m, "access_width": d["wa"], "width_error": dw,
                 "cores": [[float(c), float(cw)] for c, cw in cores],
-                "norm": "power" if "Hx" in comps else "field",
                 "modes": {n: {"neff": float(nn[i]), "te": float(tt[i])} for n, (nn, tt, i) in picked.items()},
                 "checks": checks, "dn_s": float(nc[iu] - nc[il]),
-                "tail_dB": modefields.level_dB(acc, x, y, x_bus - w_bus / 2),
-                "edge_fraction": max(modefields.edge_fraction(f, x, y, w) for f in out.values()),
-                "imaginary_fraction": max(modefields.imaginary_fraction(f, w) for f in out.values())}
+                "tail_dB": level_dB(acc, x, y, x_bus - w_bus / 2),
+                "edge_fraction": max(edge_fraction(f, x, y, w) for f in out.values())}
         if path is not None:
             c = cfg["mode_crop"]
             xlim = (min(cc - cw / 2 for cc, cw in cores) - c, max(cc + cw / 2 for cc, cw in cores) + c)
-            modefields.save(path, x, y, out, meta, xlim, (-s.h_si / 2 - c, s.h_si / 2 + c))
+            save_modes(path, x, y, out, meta, xlim, (-s.h_si / 2 - c, s.h_si / 2 + c))
         return meta
 
     # ------------------------------------------------- bus at the phase-matched width
@@ -596,7 +689,7 @@ class Study:
         cores = [(0.0, d["wa"] + dw), (d["wa"] / 2 + gap + wb / 2, wb + dw)]
         s = self.s
         key = "set|" + "|".join(str(v) for v in (
-            s.name, s.resolution, s.side_margin, s.vert_margin, s.h_si, wl, s.fixed_indices,
+            s.resolution, s.side_margin, s.vert_margin, s.h_si, wl, s.fixed_indices,
             ";".join(f"{c:.2f},{w:.2f}" for c, w in cores)))
         if key not in self.cache:
             self.cache[key] = self._solve_mode_set(d, dw, cores, key, None, f"matched TE0-TE{d['m']}")
@@ -620,9 +713,6 @@ class Study:
           4. tolerance = largest |dW| for which 1 - eta stays below the limit.
         """
         cfg, wl = self.cfg, self.cfg["wavelength"]
-        if not hasattr(self.s, "mode_fields"):
-            print("\n[matched] skipped: this solver does not return fields")
-            return
         if "modes" not in self.res:
             self.step_modes()
         even = {(r["m"], r["wa"]): r["wb_even_fields"] for r in self.res["modes"] if r["dw"] == 0}
@@ -702,7 +792,7 @@ class Study:
         ck, md, wl = meta["checks"], meta["modes"], self.cfg["wavelength"]
         s_u, dn_s = ck["upper"]["share"], meta["dn_s"]
         eta = 4 * s_u * (1 - s_u) * np.sin(np.pi * dn_s * d["Lc"] / wl) ** 2
-        row = {"m": d["m"], "wa": d["wa"], "dw": dw, "file": f"modes/{meta['tag']}.npz", "norm": meta["norm"],
+        row = {"m": d["m"], "wa": d["wa"], "dw": dw, "file": f"modes/{meta['tag']}.npz",
                "wb_star": d["wb_star"], "wb_iso": d["wb_iso"], "s_b": d["s_b"], "Lc": d["Lc"],
                "n_access": md["access"]["neff"], "n_bus": md["bus"]["neff"],
                "n_upper": md["upper"]["neff"], "n_lower": md["lower"]["neff"],
@@ -827,8 +917,6 @@ STEPS = ["sweep", "design", "tolerance", "wavelength", "bend", "validate", "mode
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--backend", choices=["emode"], default="emode",
-                    help="the mode solver: EMode2D, the only one (kept so earlier command lines still work)")
     ap.add_argument("--quick", action="store_true", help="coarse grid and fewer points")
     ap.add_argument("--steps", default=",".join(STEPS), help="comma-separated: check," + ",".join(STEPS))
     ap.add_argument("--resolution", type=float, help="grid step in nm (overrides the configuration)")

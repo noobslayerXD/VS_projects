@@ -9,13 +9,12 @@ and a 200 nm gap. Everything is a 2D cross-section mode solve, so it runs in EMo
 
 | File | What it does |
 | --- | --- |
-| `adc_study.py` | The study: parameters at the top, one function per step. |
+| `adc_study.py` | The study: parameters at the top, the checks on mode fields and the saved `modes/*.npz` files (`load_modes`), one function per step. |
 | `solver_emode.py` | Every EMode call lives here (settings, shape, reset, FDM, get, get_grid, get_fields). EMode2D functions only; EMode2D is the only solver. |
-| `modefields.py` | Mode fields: the checks done on them and the saved `modes/*.npz` files (`modefields.load`). |
 | `plots.py` | The figures. |
 | `report_figures.py` | Figures (PDF) and tables for the report in `../mdm-design-study/report.tex`, from `results_emode/`. |
-| `CODE_GUIDE.md` | What every function in the five scripts does, and every design decision with its reason. |
-| `ruff.toml` | Settings for the ruff linter: its default rules, with lines of up to 120 characters. Section 9 of `CODE_GUIDE.md` says how to check the code with ruff and Pylance. |
+| `CODE_GUIDE.md` | What every function in the four scripts does, and every design decision with its reason. |
+| `ruff.toml` | Settings for the ruff linter: its default rules, with lines of up to 120 characters. Section 8 of `CODE_GUIDE.md` says how to check the code with ruff and Pylance. |
 | `../tests/` | In `Photonics/tests`: a test double of `emodeconnection` and two test scripts. The double accepts only the documented EMode arguments and answers with a made-up coupled-mode model; it is not a mode solver and none of the study's results come from it. Run the tests from `Photonics/`, for example `python tests/test_modes_step.py`. |
 | `results_emode/` | The EMode2D run (10 nm grid). |
 | `results_emode_quick/` | The coarse EMode2D run (`--quick`, 20 nm grid). |
@@ -28,16 +27,17 @@ EMode must be installed and logged in (`pip install emodeconnection`, then
 saves `adc_study.eph` in the results folder.
 
 ```
-python adc_study.py --backend emode --steps check    # one solve: tests the EMode link
-python adc_study.py --backend emode --quick          # coarse first look
-python adc_study.py --backend emode                  # full study (about 800 mode solves)
-python adc_study.py --backend emode --steps modes,plots   # add the mode fields to a finished run (90 solves)
-python adc_study.py --backend emode --steps matched,plots # couplers rebuilt at the phase-matched width (about 160 solves)
-python adc_study.py --backend emode --steps plots    # redraw figures from saved results
+python adc_study.py --steps check            # one solve and one field read: tests the EMode link
+python adc_study.py --quick                  # coarse first look
+python adc_study.py                          # full study (about 800 mode solves)
+python adc_study.py --steps modes,plots      # add the mode fields to a finished run (90 solves)
+python adc_study.py --steps matched,plots    # couplers rebuilt at the phase-matched width (about 160 solves)
+python adc_study.py --steps plots            # redraw figures from saved results
 ```
 
-Other options: `--access 300,340,400` (access widths in nm), `--couplers 1`,
-`--resolution 5`, `--out folder`. Results go to `results_emode/` next to
+EMode2D is the only solver, so there is no solver option. Other options:
+`--access 300,340,400` (access widths in nm), `--couplers 1`, `--resolution 5`,
+`--out folder`. Results go to `results_emode/` next to
 `adc_study.py`, wherever the script is started from: figures, `summary.csv`,
 `results.json`, `cache.json`, and from the `modes` step `modes/*.npz` and
 `modes_summary.csv`. Solved cross-sections are cached, so a rerun only solves what is
@@ -53,14 +53,14 @@ force new solves.
   (`results_emode/`).
 - `mode_fields()`, the field reading of the `modes` and `matched` steps, produced
   `results_emode/modes/` with EMode's `get('x')`, `get('Ex')`, ... calls. Those are
-  deprecated, so it now reads the grid with `get_grid()` and the fields with
-  `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks. This
-  version has since run in EMode: the `matched` step read all its fields through it,
-  and they agree with the fields of the `modes` step (the couplers rebuilt at the W_pm
-  of the `modes` step are even mixtures, access share 0.499 to 0.506; two-mode
-  residuals up to 2.75 %, as before). The `check` step does one field solve and prints
-  the grid, the components EMode returned and where the TE0 field is centred (should
-  be x = 0, y = 0). `get()` is still used for `effective_index`,
+  deprecated, so it then read the grid with `get_grid()` and the fields with
+  `get_fields(['Ex', 'Ey', 'Hx', 'Hy'])`, as the EMode documentation asks. That
+  version ran in EMode: the `matched` step read all its fields through it, and they
+  agree with the fields of the `modes` step (the couplers rebuilt at the W_pm of the
+  `modes` step are even mixtures, access share 0.499 to 0.506; two-mode residuals up
+  to 2.75 %, as before). The `check` step does one field solve and prints the grid and
+  where the TE0 field is centred (should be x = 0, y = 0). `get()` is still used for
+  `effective_index`,
   `TE_fraction`, `loss_dB_per_m`, `BC`, `PML_indices` and `emode_version`, which are
   not deprecated.
 - A test double of `emodeconnection` that only accepts the documented keyword
@@ -81,6 +81,15 @@ force new solves.
   scan started elsewhere and gave a 0.56 % lower dn_min) without moving any tolerance;
   the matched couplers, rebuilt at a W_pm that moved by at most 0.023 nm, kept every
   tolerance; and the Dai benchmark's W_iso is now 1034.95 nm.
+- 25 Nov: the code was simplified (`CODE_GUIDE.md`, section 7). It uses EMode's own
+  scaling of every mode to 1 W and reads only `get_fields(['Ex', 'Ey'])`; there is no
+  solver option; and the functions of `modefields.py` are now in `adc_study.py`. Rerun
+  from the EMode cache, every step that reads no fields gives byte-identical results,
+  and on the test double the field analysis agrees with the old one to rounding. This
+  version has not run in EMode yet. Its first run solves the `modes` and `matched`
+  steps again (about 240 solves), because their cache keys changed; every other solve
+  comes from the cache. `python adc_study.py --steps check` reads one field the new way
+  in seconds, so run it first.
 
 ### Changes after reading the EMode documentation (18 Nov)
 
@@ -107,7 +116,7 @@ EMode2D also offers `converge()` (automatic resolution and window convergence) a
 convergence and sensitivity checks, but these are an independent check if wanted.
 
 The bend step is still the least certain part. To look at a bend solve, run
-`python adc_study.py --backend emode --steps bend` on its own (the straight solves
+`python adc_study.py --steps bend` on its own (the straight solves
 come from the cache, so the last solve in the file is a bend), then reopen the saved
 file as in the 'Open a Simulation' example:
 
@@ -153,7 +162,7 @@ em.close()
    cross-sections are solved on one grid and saved: the coupler (two supermodes), the
    access strip alone (TE0) and the bus strip alone (TE1 or TE2). Each supermode is
    fitted with the two strip modes (least squares on the transverse electric field,
-   all modes at unit power). From the fit:
+   every mode at 1 W, as EMode scales it). From the fit:
    - **residual**: the share of the supermode the two strip modes do not explain. It
      stays small if the coupling is the intended two-mode coupling; a third mode
      taking part would raise it.
@@ -191,8 +200,8 @@ the strips (about 1 MB each at a 10 nm grid). Coordinates are in nm, with
 the access strip centred on x = 0 and the silicon from y = -110 to +110 nm.
 
 ```python
-import modefields
-d = modefields.load("results_emode/modes/TE0-TE1_wa320_dw+0.npz")
+from adc_study import load_modes
+d = load_modes("results_emode/modes/TE0-TE1_wa320_dw+0.npz")
 d["x"], d["y"]                          # grid (nm)
 d["modes"]["upper"]["Ex"]               # Re(Ex) on (x, y); also "Ey", "neff", "te"
 d["meta"]["cores"], d["meta"]["checks"] # strip positions and widths; share, residual

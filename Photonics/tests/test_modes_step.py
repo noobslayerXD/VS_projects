@@ -1,6 +1,6 @@
-"""The 'modes' and 'matched' steps through the EMode code path, and the helpers in
-modefields.py. The test double of emodeconnection answers with a made-up coupled-mode
-model (no mode solver), so this tests the Python, not EMode's numbers.
+"""The 'modes' and 'matched' steps through the EMode code path, and the mode-field
+functions in adc_study.py. The test double of emodeconnection answers with a made-up
+coupled-mode model (no mode solver), so this tests the Python, not EMode's numbers.
 
     python tests/test_modes_step.py
 """
@@ -18,13 +18,12 @@ sys.path.insert(0, os.path.join(here, "mock_emode"))
 sys.path.insert(0, os.path.abspath(study))
 # Imported only now that the paths are set: the study and the solver under test.
 adc_study = importlib.import_module("adc_study")
-mf = importlib.import_module("modefields")
 plots = importlib.import_module("plots")
 EModeSolver = importlib.import_module("solver_emode").EModeSolver
 
-# 1. Helpers. Cell sizes add up to the span of the grid, uniform or not.
+# 1. Cell sizes add up to the span of the grid, uniform or not.
 for x in (np.arange(5.0, 100, 10), np.array([0.0, 10, 30, 35, 60])):
-    assert abs(mf.cell_sizes(x).sum() - (x[-1] - x[0] + (x[1] - x[0]) / 2 + (x[-1] - x[-2]) / 2)) < 1e-9
+    assert abs(adc_study.cell_sizes(x).sum() - (x[-1] - x[0] + (x[1] - x[0]) / 2 + (x[-1] - x[-2]) / 2)) < 1e-9
 
 # 2. A symmetric coupler's supermodes are exactly even mixtures of the two strip modes.
 s = EModeSolver(resolution=20)
@@ -32,23 +31,28 @@ pair = [(0.0, 400.0), (600.0, 400.0)]
 nc, tc, fc = s.mode_fields(pair, 1550, 6)
 na, ta, fa = s.mode_fields(pair[:1], 1550, 6, frame=pair)
 nb, tb, fb = s.mode_fields(pair[1:], 1550, 6, frame=pair)
-w = mf.weights(fc["x"], fc["y"])
+w = np.outer(adc_study.cell_sizes(fc["x"]), adc_study.cell_sizes(fc["y"]))
 
 
 def pick(f, i):
-    return mf.normalised({c: f[c][i] for c in ("Ex", "Ey", "Hx", "Hy")}, w)
+    return {"Ex": f["Ex"][i], "Ey": f["Ey"][i]}
 
 
 A, B = pick(fa, 0), pick(fb, 0)
 for i in (0, 1):
-    _, _, share, residual = mf.decompose(pick(fc, i), A, B, w)
+    _, _, share, residual = adc_study.decompose(pick(fc, i), A, B, w)
     assert abs(share - 0.5) < 2e-3 and residual < 0.02, (i, share, residual)
 print("symmetric coupler: both supermodes are 50/50 mixtures")
 
-# 3. Unit power and phase alignment.
-assert abs(mf.power(A, w) - 1) < 1e-9
-Ar = mf.rotated(A, mf.phase_at(A, fc["x"], fc["y"], (0.0, 0.0)))
-assert mf.imaginary_fraction(Ar, w) < 1e-6 and np.real(Ar["Ex"][np.argmin(abs(fc["x"])), np.argmin(abs(fc["y"]))]) > 0
+# 3. The test double scales every mode to 1 W, as EMode does and the study relies on;
+#    and the phase alignment makes a mode real, positive at the chosen point.
+raw = s.em.get_fields(["Ex", "Ey", "Hx", "Hy"]).field          # the last solve: the bus strip alone
+k = int(np.argmax(s.em.get("effective_index")))
+power = 0.5 * np.real(np.sum((raw[0, k] * np.conj(raw[3, k]) - raw[1, k] * np.conj(raw[2, k])) * w))
+assert abs(power - 1) < 1e-9, power
+Ar = adc_study.rotated(A, adc_study.phase_at(A, fc["x"], fc["y"], (0.0, 0.0)))
+assert np.abs(np.imag(Ar["Ex"])).max() < 1e-9 * np.abs(Ar["Ex"]).max()
+assert np.real(Ar["Ex"][np.argmin(abs(fc["x"])), np.argmin(abs(fc["y"]))]) > 0
 
 # 4. The whole step through the EMode code path, on a small coarse study.
 cfg = dict(adc_study.CFG, **adc_study.QUICK)
@@ -66,12 +70,12 @@ for r in rows:
     assert r["edge_fraction"] < 1e-2 and r["te_upper"] > 0.8
 up = [r["share_upper"] for r in rows]
 assert up[0] < up[1] < up[2], f"access share should grow with dW (access index grows faster): {up}"
-data = mf.load(os.path.join(out, rows[1]["file"]))
-assert set(data["modes"]) == set(mf.NAMES) and data["modes"]["upper"]["Ex"].shape == (data["x"].size, data["y"].size)
-assert data["meta"]["norm"] == "power"
+data = adc_study.load_modes(os.path.join(out, rows[1]["file"]))
+assert set(data["modes"]) == {"access", "bus", "upper", "lower"}
+assert data["modes"]["upper"]["Ex"].shape == (data["x"].size, data["y"].size)
 print("modes step through the EMode code path: shares", [round(u, 3) for u in up])
 
-# 5. A rerun reuses the saved fields; a changed grid does not.
+# 5. A rerun reuses the saved fields: no new solve.
 st2 = adc_study.Study(EModeSolver(resolution=40, save_path=out), cfg, out)
 st2.step_modes()
 assert st2.n_new == 0, st2.n_new

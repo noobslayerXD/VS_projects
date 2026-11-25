@@ -19,8 +19,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import modefields
 import plots
+from adc_study import load_modes
 from plots import COUPLER, _field_panel
 
 plt.switch_backend("Agg")                         # draw to files only: no windows, works without a display
@@ -120,7 +120,7 @@ def fig_tolerance(res):
 def fig_modes(res):
     """Mode gallery: access mode, bus mode and the two supermodes of three nominal couplers."""
     rows = [(1, 320), (1, 480), (2, 320)]
-    sets = [modefields.load(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
+    sets = [load_modes(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
     info = {(r["m"], r["wa"]): r for r in res["modes"] if r["dw"] == 0}
     views = [xlim for xlim, _ in plots._views([[s] for s in sets], margin=380)]
     xlim, ylim = views[0], (-110 - 300, 110 + 300)
@@ -151,7 +151,7 @@ def fig_modes(res):
         t.set_fontsize(5.8)
     cb = fig.colorbar(axes[0, 0].images[0], cax=cax, ticks=[0, 0.5, 1])
     cb.set_label("$|E_x|$, scaled to peak", fontsize=6.4)
-    cb.ax.spines["outline"].set_visible(False)
+    cb.ax.spines["outline"].set_visible(False)    # = cb.outline, which matplotlib 3.10 types as Spines
     cb.ax.tick_params(length=0, labelsize=6.2)
     cb.ax.grid(False)
     save(fig, "report_modes.pdf")
@@ -164,7 +164,7 @@ def fig_fieldchecks(res):
     fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.76))
     ax = axes[0]
     for k, wa in enumerate(sorted({r["wa"] for r in nominal})):
-        data = modefields.load(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
+        data = load_modes(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
         x, y = data["x"], data["y"]
         j = int(np.argmin(np.abs(y)))
         ex2 = np.abs(np.real(data["modes"]["access"]["Ex"][:, j])) ** 2
