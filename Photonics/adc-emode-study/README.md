@@ -15,6 +15,7 @@ and a 200 nm gap. Everything is a 2D cross-section mode solve, so it runs in EMo
 | `plots.py` | The figures. |
 | `report_figures.py` | Figures (PDF) and tables for the report in `../mdm-design-study/report.tex`, from `results_emode/`. |
 | `CODE_GUIDE.md` | What every function in the five scripts does, and every design decision with its reason. |
+| `ruff.toml` | Settings for the ruff linter: its default rules, with lines of up to 120 characters. Section 9 of `CODE_GUIDE.md` says how to check the code with ruff and Pylance. |
 | `../tests/` | In `Photonics/tests`: a test double of `emodeconnection` and two test scripts. The double accepts only the documented EMode arguments and answers with a made-up coupled-mode model; it is not a mode solver and none of the study's results come from it. Run the tests from `Photonics/`, for example `python tests/test_modes_step.py`. |
 | `results_emode/` | The EMode2D run (10 nm grid). |
 | `results_emode_quick/` | The coarse EMode2D run (`--quick`, 20 nm grid). |

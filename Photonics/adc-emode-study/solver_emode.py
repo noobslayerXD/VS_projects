@@ -50,8 +50,8 @@ boundary condition EMode actually used.
 """
 import math
 
-import numpy as np
 import emodeconnection as emc
+import numpy as np
 
 
 class EModeSolver:
@@ -97,9 +97,9 @@ class EModeSolver:
         if self.fixed_indices:
             return float(self.fixed_indices[1])
         try:
-            return float(np.real(np.ravel(self.em.refractive_index(
-                material=self.clad, wavelength=wavelength))[0]))
-        except Exception:
+            return float(np.real(np.ravel(np.asarray(self.em.refractive_index(
+                material=self.clad, wavelength=wavelength)))[0]))
+        except Exception:  # no index from EMode: use SiO2's  # noqa: BLE001
             return 1.444                                  # SiO2 near 1550 nm
 
     def _read(self, key):
@@ -109,7 +109,7 @@ class EModeSolver:
     def _read_optional(self, key, default=None):
         try:
             return self.em.get(key)
-        except Exception:
+        except Exception:  # a missing diagnostic must not stop the run  # noqa: BLE001
             return default
 
     def _te_fraction(self):
@@ -178,11 +178,11 @@ class EModeSolver:
         y = self._axis(self._member(grid, "y")) - window_height / 2
         try:
             data = self.em.get_fields(["Ex", "Ey", "Hx", "Hy"])
-        except Exception:                                 # retry without the H fields
+        except Exception:  # retry without the H fields  # noqa: BLE001
             data = self.em.get_fields(["Ex", "Ey"])
         names = list(self._member(data, "field_names"))
         stacked = np.asarray(self._member(data, "field"))   # [field, mode, x, y]
-        fields, missing = dict(x=x, y=y), []
+        fields, missing = {"x": x, "y": y}, []
         for comp in ("Ex", "Ey", "Hx", "Hy"):
             if comp in names:
                 fields[comp] = self._stack(stacked[names.index(comp)], len(neff), x.size, y.size)[order]
@@ -236,8 +236,8 @@ class EModeSolver:
 
         neff = self._read("effective_index")
         te = self._te_fraction()
-        self.last = dict(kind="straight", window_width=window_width, window_height=window_height,
-                         boundary_condition=self._read_optional("BC"), modes_found=len(neff))
+        self.last = {"kind": "straight", "window_width": window_width, "window_height": window_height,
+                     "boundary_condition": self._read_optional("BC"), "modes_found": len(neff)}
         return neff, te, np.argsort(-neff), shift, window_height
 
     def bend_loss(self, width, radius, wavelength, n_guess=None):
@@ -298,23 +298,25 @@ class EModeSolver:
                      position=[-x_off, window_height / 2])
             em.FDM(verbose=self.verbose)
             neff = self._read("effective_index")
-            pml = set(np.atleast_1d(self._read_optional("PML_indices", [])).astype(int).tolist())
+            pml = set(np.atleast_1d(np.asarray(self._read_optional("PML_indices", []))).astype(int).tolist())
             te = self._te_fraction()
             ok = [i for i in range(len(neff)) if i not in pml and te[i] > 0.5]
             return neff, te, pml, ok
 
         try:
-            neff, te, pml_modes, ok = solve(seed=False)
-        except Exception:
-            ok = []
-        seeded = not ok
-        if seeded:
-            neff, te, pml_modes, ok = solve(seed=True)
+            result = solve(seed=False)
+        except Exception:  # the first try failed: fall back to the seeded solve  # noqa: BLE001
+            result = None
+        if result is None or not result[3]:               # no guided TE mode: let EMode seed the shift
+            seeded, result = True, solve(seed=True)
+        else:
+            seeded = False
+        neff, te, pml_modes, ok = result
         loss = self._read("loss_dB_per_m")
-        self.last = dict(kind="bend", window_width=window_width, window_height=window_height,
-                         x_off=x_off, bend_radius_setting=bend_radius, caustic_nm=caustic,
-                         boundary_condition=self._read_optional("BC"), modes_found=len(neff),
-                         pml_modes=sorted(pml_modes), pml_seeded=seeded)
+        self.last = {"kind": "bend", "window_width": window_width, "window_height": window_height,
+                     "x_off": x_off, "bend_radius_setting": bend_radius, "caustic_nm": caustic,
+                     "boundary_condition": self._read_optional("BC"), "modes_found": len(neff),
+                     "pml_modes": sorted(pml_modes), "pml_seeded": seeded}
         if not ok:
             raise RuntimeError(f"no guided TE mode found in the bend (W = {width}, R = {radius})")
         i = max(ok, key=lambda k: neff[k])

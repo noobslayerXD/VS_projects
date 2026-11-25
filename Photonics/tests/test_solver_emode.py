@@ -4,15 +4,21 @@ coupled-mode model (no mode solver). Tests the Python, not EMode's numbers.
 
     python tests/test_solver_emode.py
 """
-import os, sys
+import importlib
+import os
+import sys
+from typing import Any
+
 import numpy as np
+
 here = os.path.dirname(os.path.abspath(__file__))
 study = next(p for p in (os.path.join(here, ".."), os.path.join(here, "..", "adc-emode-study"))
              if os.path.exists(os.path.join(p, "solver_emode.py")))   # tests/ inside or beside the study
 sys.path.insert(0, os.path.join(here, "mock_emode"))
 sys.path.insert(0, os.path.abspath(study))
-import emodeconnection as emc
-from solver_emode import EModeSolver
+# Imported only now that the paths are set: the test double and the solver under test.
+emc: Any = importlib.import_module("emodeconnection")   # Any: the tests set its switches (SHIFT, GIVE_H, ...)
+EModeSolver = importlib.import_module("solver_emode").EModeSolver
 
 for res in (10, 20, 40):
     s = EModeSolver(resolution=res)

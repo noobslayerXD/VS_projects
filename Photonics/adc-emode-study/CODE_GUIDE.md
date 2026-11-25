@@ -12,6 +12,7 @@ every design decision behind them. It describes the code as it is in this folder
 | `report_figures.py` | The four report figures and the rows of Table 1, and the numbers quoted in the report text. |
 
 Lengths are in nm everywhere unless a name says otherwise (`_um`, `_per_um`, `_dB`).
+The scripts pass ruff and Pylance's type checks; section 9 says how to run them.
 
 ---
 
@@ -135,14 +136,17 @@ and into the saved metadata, so results from different solvers are never mixed.
 
 #### `__init__(resolution=10, h_si=220, side_margin=1500, vert_margin=1000, core="Si", clad="SiO2", simulation_name="adc_study", save_path=".", verbose=False)`
 Stores the grid step, silicon thickness, window margins and material names, sets
-`fixed_indices = None` (database materials), and stores three bend settings taken from
+`fixed_indices` to `None` (database materials), and stores three bend settings taken from
 EMode's bend examples: `pml_side = 1500` (outer-wall PML), `pml_vertical = 1000` (top and
 bottom PML) and `caustic_clearance = 500` (oxide between the radiation caustic and the
-PML). `last` holds details of the last solve for checking. Finally it opens the EMode
-session with `license_type='2d'`, written in the call rather than taken as a parameter,
-because the study only ever uses EMode2D functions. `'2d'` checks out the EMode2D licence
-directly; `'3d'` would fail on an account without an EMode3D licence, and `'default'`
-takes a 3D licence first when one is available.
+PML). `fixed_indices` is declared `tuple[float, float] | None`. The Dai benchmark sets the
+tuple from `adc_study.py`; without the declaration Pylance sees only the `None` set here,
+finds no possible value inside `if self.fixed_indices:` in `_materials`, and reports
+that "Never" is not iterable. `last` holds details of the last solve for checking.
+Finally it opens the EMode session with `license_type='2d'`, written in the call rather
+than taken as a parameter, because the study only ever uses EMode2D functions. `'2d'`
+checks out the EMode2D licence directly; `'3d'` would fail on an account without an
+EMode3D licence, and `'default'` takes a 3D licence first when one is available.
 
 #### `_even(length)`
 Rounds a window length up to a whole, even number of grid cells:
@@ -163,14 +167,17 @@ Dai benchmark).
 #### `_clad_index(wavelength)`
 The cladding index, used only to place the bend window past the radiation caustic: the
 fixed value, EMode's `refractive_index(material=clad, wavelength=...)`, or 1.444 (SiO2
-near 1550 nm) if that call fails.
+near 1550 nm) if that call fails. EMode's answer goes through `np.asarray` before numpy
+reads it, as in `_read`: the EMode package declares that its calls can also return a
+dict, text or a plot, and numpy's type hints accept only array-like values.
 
 #### `_read(key)`
 Reads a per-mode result with `em.get(key)` and returns it as a 1D real float array.
 
 #### `_read_optional(key, default=None)`
 `em.get(key)`, or `default` if EMode raises. Used for diagnostics (`BC`, `PML_indices`,
-`emode_version`) that must not stop a run.
+`emode_version`) that must not stop a run. It returns EMode's answer unchanged, so
+`bend_loss` passes the `PML_indices` through `np.asarray` before numpy reads them.
 
 #### `_te_fraction()`
 Reads `TE_fraction`. It is documented as 0 to 1; if the values exceed 1.5 they are taken
@@ -245,8 +252,9 @@ up as in EMode's 'Ring Resonator Design' and 'Bend Mode Solvers' examples:
   window centre; the margin is 0.05 rather than the example's 0.01 because the mode
   moves outward in tight bends. Modes flagged in `PML_indices` and modes with TE
   fraction ≤ 0.5 are dropped.
-- If that finds nothing, a second try uses `pml_seed_bool=True`: EMode takes the shift
-  from the same structure solved without PML, so no guess is needed.
+- If the first try raises an error or finds no guided TE mode, a second try uses
+  `pml_seed_bool=True`: EMode takes the shift from the same structure solved without
+  PML, so no guess is needed. `last["pml_seeded"]` records which try gave the result.
 - The highest-index remaining mode is taken. A negative loss (PML truncation error) is
   reported as a warning.
 - n_eff and loss (dB/m) are multiplied by `scale = (radius + x_off)/radius`, which moves
@@ -346,6 +354,10 @@ Reads a saved set and returns `dict(x, y, meta, modes)`, where
   and phase matching are never read off at the end of a curve.
 - **`QUICK`**: coarse settings for a first look (three access widths, ±10 nm errors,
   three wavelengths, coarser sweeps, ±20 nm scans, 20 nm grid).
+- Both are declared `dict[str, Any]`. Their values mix numbers, lists and tuples. Without
+  the declaration Pylance gives every value one combined type, and then rejects
+  `cfg["resolution"]` as the solver's grid step and the list of floats that `--access`
+  stores in `cfg["access_widths"]`.
 - **`N_GUIDED = 1.46`**: modes with lower n_eff are not counted as guided (oxide is 1.444).
 - **`WANG_2022`**: the conventional TE0→TE1 coupler of Wang et al. (400 nm access, 200 nm
   gap, L_c 17.0 µm; 820 nm is the bus of their corrugated coupler).
@@ -368,7 +380,13 @@ The width at which a sweep n(w), rising with w, reaches `n_target`, found by roo
 line between sweep points 50 nm apart would put the width up to about 1 nm too high:
 n_eff(W) is concave, so the chord lies below the curve. Checked against EMode solves of
 each bus strip at W_pm and W*, the PCHIP value is within 0.3 nm. Raises an error if
-`n_target` is outside the sweep.
+`n_target` is outside the sweep. The root goes through `cast(float, ...)` for the type
+checker: scipy declares that `brentq` may return a tuple, which it does only when asked
+for `full_output`.
+
+#### `read_json(path)`
+The contents of a JSON file, or an empty dict if the file does not exist yet. The file is
+opened in a `with` block, so it is closed as soon as it has been read.
 
 #### `symmetric_tolerance(dw, residual_dB, limit_dB)`
 Steps through |ΔW| in increasing order and returns the largest value for which every
@@ -379,8 +397,8 @@ tolerance is ±ΔW: the whole interval passes, not just its ends.
 
 #### `__init__(solver, cfg, outdir)`
 Stores the solver, configuration and results folder, and loads `cache.json` and
-`results.json` if they exist, so a run continues from earlier results. `n_new` counts
-new solves.
+`results.json` with `read_json` (empty if they do not exist yet), so a run continues from
+earlier results. `n_new` counts new solves.
 
 #### `solve(cores, wavelength, num_modes)`
 The cached straight solve. The key contains the grid, both margins, the silicon
@@ -389,7 +407,8 @@ to 0.01 nm), so any change of settings makes a new key. The cache is also saved 
 new solves, so a hard crash loses little work.
 
 #### `save()`
-Writes `cache.json` and `results.json`.
+Writes `cache.json` and `results.json` (the results indented, so they can be read), each
+in a `with` block, so the file is complete and closed before the run goes on.
 
 #### `guided(cores, wavelength, pol, num_modes)`
 The guided modes of one polarisation, highest index first: n_eff > 1.46 and TE fraction
@@ -406,21 +425,28 @@ closest to the isolated access index, which is the pair formed by the access mod
 the bus mode it is matched to. Fewer than two guided modes raises an error.
 
 #### `anticrossing(wa, gap, wavelength, wb_guess, pol="TE")`
-Scans the bus width and fits the anticrossing:
+Scans the bus width and fits the anticrossing. The nested helper `scan(guess)` does one
+scan:
 
-1. Centres a scan of ±`scan_half_range` in `scan_step` steps on the guess, rounded to the
-   step (so the points lie on a 10 nm grid and different scans share cached solves).
-2. Fits Δn_s² with a quadratic in (W − centre); the centred variable keeps the fit well
-   conditioned. A non-positive curvature means there is no anticrossing and raises an
-   error.
-3. W* is the parabola's minimum. If it lies more than half a step (+0.5 nm) from the
-   centre, the scan is re-centred on it (moves are limited to ±2 × the half range) and
-   repeated, up to five scans. If it has not settled after five scans, the last fit is
-   used. In the EMode run every design scan settled (W* within 4.5 nm of its centre).
-4. Δn_min² is the parabola's minimum value; a non-positive value raises an error.
+1. It centres ±`scan_half_range` in `scan_step` steps on the guess, rounded to the step
+   (so the points lie on a 10 nm grid and different scans share cached solves), and
+   solves the splitting at each point.
+2. It fits Δn_s² with a quadratic in (W − centre); the centred variable keeps the fit
+   well conditioned. A non-positive curvature means there is no anticrossing and raises
+   an error.
+3. It returns the centre, the scan, the fit and W*, the parabola's minimum.
 
-Returns W*, Δn_min, the slope c = √(curvature) (the detuning per nm of bus width), the
-scan points and the RMS fit error.
+The first scan is centred on `wb_guess`. While W* lies more than half a step (+0.5 nm)
+from the scan's centre, the scan is repeated centred on W* (each move limited to ±2 × the
+half range), at most four more times: five scans in all. If W* has not settled by then,
+the last fit is used. In the EMode run every design scan settled (W* within 4.5 nm of
+its centre). Finally Δn_min² is the parabola's minimum value; a non-positive value raises
+an error.
+
+Returns a dict with W*, Δn_min, the slope c = √(curvature) (the detuning per nm of bus
+width), the scan points and the RMS fit error. The return type is declared
+`dict[str, Any]`: the dict holds numbers and lists, and the callers calculate with the
+numbers (κ, the figure of merit, L_c).
 
 #### `step_check()`
 One solve of the 400 nm access strip, printed with the expected values (TE0 near 2.2
@@ -491,16 +517,17 @@ Checks that the numbers can be trusted:
    and 14 modes per solve. A TM1 sweep of the bus from 900 to 1150 nm gives W_iso, then the
    TM anticrossing gives W* and L_c. The paper's lengths are straight sections from 3D
    FDTD, where the S-bends add coupling, so they are shorter than the supermode L_c.
-   Every changed setting is restored in a `finally` block, even if the benchmark fails.
+   If the benchmark fails, the error is printed and the other checks go on; every
+   changed setting is restored in a `finally` block either way.
 4. Prints the re-solved against the first-order tolerance.
 
 #### `step_modes()`
 For each design and each ΔW in `mode_errors`, the coupler is built with the same rule as
 the tolerance step (bus at W* + ΔW, centre lines fixed). If a saved file for that
 geometry exists and its stored key matches (same solver, grid, margins, thickness,
-wavelength, fixed indices, crop and strips), its checks are reused; otherwise
-`_solve_mode_set` solves and saves it. `_mode_row` then compares the fields with the
-two-mode model, and `_modes_report` prints the summary.
+wavelength, fixed indices, crop and strips), its checks are reused; otherwise, or if the
+file cannot be read, `_solve_mode_set` solves and saves it. `_mode_row` then compares the
+fields with the two-mode model, and `_modes_report` prints the summary.
 
 #### `_guided_te(neff, te)`
 Indices of the guided TE modes (n_eff > 1.46, TE fraction > 0.5), highest first.
@@ -557,6 +584,9 @@ One row of the field checks, next to the model:
 - from the model at the same ΔW: Δn_min, Δn_det, Δn_s, the predicted share
   ½(1 − Δn_det/Δn_s) and η.
 
+The row holds text and numbers, so its type is declared `dict[str, Any]`; `step_modes`
+prints the numbers scaled (for example 10³·Δn_s).
+
 #### `_modes_report(rows)`
 Prints whether the coupling is the intended two-mode coupling (largest residual,
 splitting against the fit, phase signs, TE fraction, edge fraction), the access-mode
@@ -590,8 +620,10 @@ and closes EMode, so an error mid-run keeps what was solved.
 
 ## 6. `plots.py`
 
-Uses the non-interactive `Agg` backend (no display needed) and one `rcParams` block for
-sizes, line widths and grid. It defines no colours.
+Right after its imports it switches pyplot to the non-interactive `Agg` backend
+(`plt.switch_backend("Agg")`): figures go to files only, no windows open, and it works
+on a machine without a display. One `rcParams` block sets sizes, line widths and grid.
+It defines no colours.
 `COUPLER = {1: "TE0→TE1", 2: "TE0→TE2"}` gives the labels.
 
 #### `_save(fig, outdir, name, note)`
@@ -640,13 +672,14 @@ The x and y limits for each row of a mode-map figure. All rows get the same span
 every panel has the same scale. The span is the widest coupler plus the margin on each
 side, cut to what every saved window holds, but never less than the widest coupler plus
 100 nm. The nested helper `box(sets)` gives a row's strip extent and the part of x that
-all its saved windows cover. Each row is centred on its own coupler and shifted, if needed, to stay inside its
-saved windows. The vertical limits are the silicon plus `ymargin`, also kept inside the
-windows.
+all its saved windows cover. Each row is centred on its own coupler and shifted, if
+needed, to stay inside its saved windows. The vertical limits are the silicon plus
+`ymargin`, also kept inside the windows.
 
 #### `_field_panel(ax, data, name, xlim, ylim)`
 Draws one mode: \|Ex\| scaled to its own peak, on `plasma` from 0 to 1, with bilinear
-smoothing; the silicon strips outlined in white; equal aspect, no ticks, no frame.
+smoothing; the silicon strips outlined in white; equal aspect, no ticks, no frame. It
+returns nothing: the colour bar takes its scale from the panel images afterwards.
 
 #### `_scale_bar(ax, xlim, ylim, length=500)`
 A white 500 nm bar with its label in the lower-left corner of a panel.
@@ -657,7 +690,9 @@ thin colour-bar axis in the right margin, centred on the panels.
 
 #### `_field_colorbar(fig, im, cax)`
 The colour bar: ticks at 0, 0.5 and 1, the label "|Ex|, each mode scaled to its peak", no
-outline and no grid line across it.
+outline and no grid line across it. The figures pass the first panel's image,
+`axes[0, 0].images[0]`; every panel uses the same scale (`plasma`, 0 to 1), so any of
+them gives the same bar.
 
 #### `fig_mode_gallery(res, cfg, outdir, note, m)` → `fig8_…`, `fig9_…`
 For one coupler type, every access width at ΔW = 0: the access strip alone, the bus strip
@@ -696,10 +731,11 @@ script, so it works from any folder. `TEXTWIDTH = 6.5` inches is the drawing wid
 LaTeX scales the figures to the report's 17 cm text width. The `rcParams` block sets
 DejaVu Sans (it ships with matplotlib, so the figures look the same everywhere), small
 report font sizes, 300 dpi for the raster mode maps inside the PDFs, and
-`pdf.fonttype = 42` (embedded TrueType fonts, so the text stays text).
+`pdf.fonttype = 42` (embedded TrueType fonts, so the text stays text). Like `plots.py`, it
+switches pyplot to the `Agg` backend after its imports.
 
 #### `load(folder)`
-Reads `results.json`.
+Reads `results.json`, in a `with` block.
 
 #### `save(fig, name)`
 Saves a PDF into `../mdm-design-study/figures/` with a tight bounding box and closes it.
@@ -719,7 +755,8 @@ dashed).
 Three couplers: TE0→TE1 at 320 and 480 nm (the narrowest and widest access) and TE0→TE2
 at 320 nm. Each row shows the access strip alone, the bus strip alone and the two
 supermodes, using the same panel, view and scale-bar functions as `plots.py`. The
-vertical window is the silicon ± 300 nm.
+vertical window is the silicon ± 300 nm, and the colour bar takes its scale from the
+first panel's image.
 
 #### `fig_fieldchecks(res)` → Fig. 5, `report_fieldchecks.pdf`
 (a) the access mode's evanescent tail (from the TE0→TE1 files; the bus starts 200 nm from
@@ -752,7 +789,9 @@ gap in Fig. 5a, the three couplers of Fig. 4, and the 320 and 480 nm widths that
 
 ---
 
-## 8. Changes made while writing this guide (23 Nov)
+## 8. Changes since the guide was first written
+
+### 23 Nov
 
 - **W_iso is now found on the PCHIP curve** (`width_at_index`). Before, straight lines
   between sweep points 50 nm apart put it 0.1 to 0.9 nm too wide. The `design`, `modes`
@@ -775,6 +814,90 @@ gap in Fig. 5a, the three couplers of Fig. 4, and the 320 and 480 nm widths that
   docstring now names the figures that read saved fields (8 to 11), and the
   `TEXTWIDTH` comment now says LaTeX scales the figures to the 17 cm text width.
 
+### 25 Nov: every Pylance and ruff finding fixed
+
+No result changed. Every study step rerun from the EMode cache gives byte for byte the
+same `results.json`, `summary.csv` and `modes_summary.csv` with the new code as with the
+old; the 13 study figures are pixel for pixel the same, the four report figures differ
+only in their creation date, and Table 1 is the same. The changed lines in `bend_loss`
+and `_clad_index` run only in a new bend solve: the test double runs them, both tries
+included, and both test scripts pass.
+
+- **Types** (Pylance): `fixed_indices` is declared `tuple[float, float] | None`; `CFG`,
+  `QUICK` and the dicts that `anticrossing` and `_mode_row` return are declared
+  `dict[str, Any]`; `brentq`'s root goes through `cast(float, ...)`; `add_axes` gets a
+  tuple; and EMode's answers go through `np.asarray` before numpy reads them
+  (`_clad_index`, the `PML_indices` in `bend_loss`), as `_read` already did. Pylance
+  shows the last two only on a machine where EMode's package is installed.
+- **Variables set before they are used** (Pylance's "possibly unbound"): `anticrossing`
+  does its first scan before the re-centring loop, `step_matched` its first check before
+  the correction loop, and `bend_loss` keeps the first try's outcome in `result`. The
+  mode-map colour bars take the first panel's image instead of a variable left over from
+  the drawing loop, so `_field_panel` no longer returns one.
+- **Files** (ruff SIM115): every file is opened in a `with` block (`read_json`,
+  `Study.save`, `report_figures.load`, the plots-only path of `main`).
+- **Style** (ruff): `dict(...)` calls became `{...}` literals (C408), the imports are
+  sorted (I001) with the `Agg` backend switched after them, the `%` formats in
+  `summary` became f-strings (UP031), and the shebang line went (EXE001: the script is
+  run with `python`).
+- **Deliberate broad catches** (ruff BLE001): seven `except Exception` blocks stay,
+  marked `# noqa: BLE001` with their reason (see section 9).
+- **Tests**: they load the study modules with `importlib` after setting their paths
+  (no import below code, and no `noqa`), and the test double builds its fields in a
+  loop Pylance can follow.
+
 The tests in `../tests/` (a test double of `emodeconnection` and two test scripts) are
 not part of the five scripts. They run the whole study through the EMode code path on a
 made-up coupled-mode model, so they check the Python, not EMode's numbers.
+
+---
+
+## 9. Checking the code
+
+**Ruff** (linter). `ruff.toml` in this folder keeps ruff's default rules and sets one
+thing: the 120-character lines the scripts use. Where it sits matters too: ruff takes
+the folder that holds it as the project root, so it counts the study's own modules
+(`plots`, `modefields`, ...) as local imports and sorts the imports the same way
+whichever folder it is started from. From `Photonics/`:
+
+```
+ruff check adc-emode-study tests
+```
+
+The five scripts and the tests pass ruff's default rules (the command above), the
+smaller rule set older ruff versions used by default, and all of pycodestyle and
+pyflakes at 120 characters:
+
+```
+ruff check --select E4,E7,E9,F adc-emode-study tests
+ruff check --select E,W,F --line-length 120 adc-emode-study tests
+```
+
+`ruff.toml` covers only this folder, so the last check needs `--line-length 120` for the
+tests; without it ruff measures their lines against its default of 88 characters. The
+default rules do not check line length.
+
+Seven `except Exception` blocks are deliberate, and ruff's rule against broad catches
+(BLE001) is switched off on exactly those lines with `# noqa: BLE001` and a reason:
+
+| Where | Why any error is caught |
+| --- | --- |
+| `EModeSolver._clad_index` | No cladding index from EMode: use 1.444 (SiO2) to place the bend window. |
+| `EModeSolver._read_optional` | A missing diagnostic must not stop a run. |
+| `EModeSolver.mode_fields` | Retry without the H fields. |
+| `EModeSolver.bend_loss` | The first try failed: fall back to the seeded solve. |
+| `Study.step_bend` | One failed bend is stored as NaN and the study goes on. |
+| `Study.step_validate` | A failed TM benchmark is reported and the other checks go on. |
+| `Study.step_modes` | A saved field file that cannot be read is solved again. |
+
+**Pylance** (type checker, `"python.analysis.typeCheckingMode": "standard"` in this
+repository's VS Code settings) reports nothing in the five scripts or the tests, checked
+with EMode's package (`emodeconnection` 1.1.25) installed. On a machine without it, the
+only report is that `emodeconnection` cannot be imported. The same checks can be run
+outside VS Code with Pyright, the checker inside Pylance, from `Photonics/` in the Python
+environment where EMode is installed:
+
+```
+pip install pyright
+pyright adc-emode-study tests
+```

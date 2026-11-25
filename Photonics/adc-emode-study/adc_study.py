@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Does a narrower access waveguide make a silicon asymmetric directional coupler
 (ADC) more tolerant to fabrication width errors?
@@ -55,6 +54,7 @@ import json
 import math
 import os
 import time
+from typing import Any, cast
 
 import numpy as np
 from scipy.interpolate import PchipInterpolator
@@ -65,40 +65,41 @@ import modefields
 # ----------------------------------------------------------------------------
 # Study parameters (all lengths in nm). Edit these.
 # ----------------------------------------------------------------------------
-CFG = dict(
-    wavelength=1550,                      # design wavelength
-    gap=200,                              # coupling gap = smallest feature allowed in this study
-    access_widths=[320, 360, 400, 440, 480],   # access widths to compare
-    baseline=400,                         # conventional access width used in the literature
-    access_sweep=(280, 520, 20),          # isolated-strip sweep for TE0: start, stop, step
-    bus_sweep=(600, 1700, 50),            # isolated-strip sweep for TE1, TE2: start, stop, step
-    scan_half_range=30, scan_step=10,     # anticrossing scan of the bus width: +/- range, step
-    width_errors=[-20, -10, 0, 10, 20],   # uniform width errors dW that are re-solved
-    wavelengths=[1500, 1530, 1550, 1565, 1600],
-    c_band=(1530, 1565),
-    residual_limit_dB=-15.0,              # tolerance criterion on the unconverted power
-    bend_radii=[3000, 5000, 10000],       # S-bend radii for the access waveguide
-    resolution=10,                        # grid step
-    convergence_resolutions=[40, 20, 10], # for the mesh-convergence check
-    modes_single=10, modes_coupled=10,    # number of modes requested per solve
-    couplers=[1, 2],                      # 1: TE0-TE1, 2: TE0-TE2
-    mode_errors=[-10, 0, 10],             # width errors dW whose mode fields are saved ('modes' step)
-    mode_crop=600,                        # cladding kept around the strips in the saved fields
-    matched_errors=[-10, -5, 0, 5, 10],   # width errors for the couplers rebuilt at the phase-matched width
-)
-QUICK = dict(                             # coarse settings for a first look
-    access_widths=[320, 400, 480], width_errors=[-10, 0, 10],
-    wavelengths=[1530, 1550, 1565], bus_sweep=(600, 1700, 100),
-    access_sweep=(280, 520, 40), scan_half_range=20,
-    resolution=20, convergence_resolutions=[40, 20],
-)
+CFG: dict[str, Any] = {
+    "wavelength": 1550,                      # design wavelength
+    "gap": 200,                              # coupling gap = smallest feature allowed in this study
+    "access_widths": [320, 360, 400, 440, 480],   # access widths to compare
+    "baseline": 400,                         # conventional access width used in the literature
+    "access_sweep": (280, 520, 20),          # isolated-strip sweep for TE0: start, stop, step
+    "bus_sweep": (600, 1700, 50),            # isolated-strip sweep for TE1, TE2: start, stop, step
+    "scan_half_range": 30, "scan_step": 10,     # anticrossing scan of the bus width: +/- range, step
+    "width_errors": [-20, -10, 0, 10, 20],   # uniform width errors dW that are re-solved
+    "wavelengths": [1500, 1530, 1550, 1565, 1600],
+    "c_band": (1530, 1565),
+    "residual_limit_dB": -15.0,              # tolerance criterion on the unconverted power
+    "bend_radii": [3000, 5000, 10000],       # S-bend radii for the access waveguide
+    "resolution": 10,                        # grid step
+    "convergence_resolutions": [40, 20, 10], # for the mesh-convergence check
+    "modes_single": 10, "modes_coupled": 10,    # number of modes requested per solve
+    "couplers": [1, 2],                      # 1: TE0-TE1, 2: TE0-TE2
+    "mode_errors": [-10, 0, 10],             # width errors dW whose mode fields are saved ('modes' step)
+    "mode_crop": 600,                        # cladding kept around the strips in the saved fields
+    "matched_errors": [-10, -5, 0, 5, 10],   # width errors for the couplers rebuilt at the phase-matched width
+}
+QUICK: dict[str, Any] = {            # coarse settings for a first look
+    "access_widths": [320, 400, 480], "width_errors": [-10, 0, 10],
+    "wavelengths": [1530, 1550, 1565], "bus_sweep": (600, 1700, 100),
+    "access_sweep": (280, 520, 40), "scan_half_range": 20,
+    "resolution": 20, "convergence_resolutions": [40, 20],
+}
 N_GUIDED = 1.46        # modes with n_eff below this are not guided in oxide cladding
 
 # Published designs used as benchmarks in the 'validate' step
-WANG_2022 = dict(access=400, gap=200, bus=820, Lc_um=17.0)               # TE0-TE1, 1550 nm; 820 nm is
-                                                                         # the bus of its corrugated coupler
-DAI_2013 = dict(access=400, gap=300, bus=1020, Lc_um=4.5, wavelength=1500,
-                n_si=3.455, n_sio2=1.445)                                # TM0-TM1
+# Wang et al. 2022: TE0-TE1 at 1550 nm; 820 nm is the bus of their corrugated coupler.
+WANG_2022 = {"access": 400, "gap": 200, "bus": 820, "Lc_um": 17.0}
+# Dai et al. 2013: TM0-TM1 at 1500 nm, with constant indices.
+DAI_2013 = {"access": 400, "gap": 300, "bus": 1020, "Lc_um": 4.5, "wavelength": 1500,
+            "n_si": 3.455, "n_sio2": 1.445}
 
 
 # ----------------------------------------------------------------------------
@@ -123,7 +124,16 @@ def width_at_index(w, n, n_target):
     if not 0 < i < len(n):
         raise ValueError(f"n_eff = {n_target:.4f} is outside the sweep ({n[0]:.4f} to {n[-1]:.4f})")
     f = PchipInterpolator(w, n)
-    return float(brentq(lambda x: float(f(x)) - n_target, w[i - 1], w[i]))
+    root = brentq(lambda x: float(f(x)) - n_target, w[i - 1], w[i])
+    return float(cast(float, root))                   # a float unless brentq is asked for full_output
+
+
+def read_json(path):
+    """The contents of a JSON file, or an empty dict if the file does not exist yet."""
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        return json.load(f)
 
 
 def symmetric_tolerance(dw, residual_dB, limit_dB):
@@ -143,8 +153,8 @@ class Study:
         os.makedirs(outdir, exist_ok=True)
         self.cache_file = os.path.join(outdir, "cache.json")
         self.res_file = os.path.join(outdir, "results.json")
-        self.cache = json.load(open(self.cache_file)) if os.path.exists(self.cache_file) else {}
-        self.res = json.load(open(self.res_file)) if os.path.exists(self.res_file) else {}
+        self.cache = read_json(self.cache_file)
+        self.res = read_json(self.res_file)
         self.n_new = 0
 
     # ------------------------------------------------------------ solver access
@@ -164,8 +174,10 @@ class Study:
         return np.array(neff), np.array(te)
 
     def save(self):
-        json.dump(self.cache, open(self.cache_file, "w"))
-        json.dump(self.res, open(self.res_file, "w"), indent=1)
+        with open(self.cache_file, "w") as f:
+            json.dump(self.cache, f)
+        with open(self.res_file, "w") as f:
+            json.dump(self.res, f, indent=1)
 
     def guided(self, cores, wavelength, pol, num_modes):
         """Guided modes of one polarisation ('TE' or 'TM'), highest index first."""
@@ -190,27 +202,32 @@ class Study:
         i = int(np.argmin(np.abs(mean - n_a)))            # the pair that sits around n_a
         return float(n[i] - n[i + 1])
 
-    def anticrossing(self, wa, gap, wavelength, wb_guess, pol="TE"):
+    def anticrossing(self, wa, gap, wavelength, wb_guess, pol="TE") -> dict[str, Any]:
         """Scan the bus width and fit dn_s^2 = dn_min^2 + [c (W - W_star)]^2."""
         half, step = self.cfg["scan_half_range"], self.cfg["scan_step"]
-        for _ in range(5):                                # re-centre until W_star is mid-scan
-            centre = step * round(wb_guess / step)
+
+        def scan(guess):
+            """Solve a scan centred on `guess` (rounded to the step) and fit its parabola."""
+            centre = step * round(guess / step)
             wb = np.arange(centre - half, centre + half + 1, step, dtype=float)
             dn = np.array([self.splitting(wa, gap, w, wavelength, pol) for w in wb])
             p2, p1, p0 = np.polyfit(wb - centre, dn**2, 2)
             if p2 <= 0:
                 raise RuntimeError(f"no anticrossing found near W_bus = {centre} nm (W_a = {wa})")
-            w_star = centre - p1 / (2 * p2)
+            return centre, wb, dn, p2, p1, p0, centre - p1 / (2 * p2)
+
+        centre, wb, dn, p2, p1, p0, w_star = scan(wb_guess)
+        for _ in range(4):                                # re-centre until W_star is mid-scan: 5 scans at most
             if abs(w_star - centre) <= step / 2 + 0.5:
                 break
-            wb_guess = centre + float(np.clip(w_star - centre, -2 * half, 2 * half))
+            centre, wb, dn, p2, p1, p0, w_star = scan(centre + float(np.clip(w_star - centre, -2 * half, 2 * half)))
         dn_min2 = p0 - p1**2 / (4 * p2)
         if dn_min2 <= 0:
             raise RuntimeError(f"anticrossing fit failed near W_bus = {centre} nm (W_a = {wa})")
         fit = np.sqrt(dn_min2 + p2 * (wb - w_star) ** 2)
-        return dict(wb_star=float(w_star), dn_min=float(math.sqrt(dn_min2)), slope=float(math.sqrt(p2)),
-                    scan_w=wb.tolist(), scan_dn=dn.tolist(),
-                    fit_rms=float(np.sqrt(np.mean((fit - dn) ** 2))))
+        return {"wb_star": float(w_star), "dn_min": float(math.sqrt(dn_min2)), "slope": float(math.sqrt(p2)),
+                "scan_w": wb.tolist(), "scan_dn": dn.tolist(),
+                "fit_rms": float(np.sqrt(np.mean((fit - dn) ** 2)))}
 
     # -------------------------------------------------------------------- steps
     def step_check(self):
@@ -245,7 +262,7 @@ class Study:
                             + [float(w) for w in self.cfg["access_widths"]]))
         print(f"\n[sweep] {len(widths)} isolated strips, {widths[0]:.0f}-{widths[-1]:.0f} nm")
         table = {m: [self.n_iso(w, wl, m) for w in widths] for m in (0, 1, 2)}
-        self.res["sweep"] = dict(width=widths, TE0=table[0], TE1=table[1], TE2=table[2])
+        self.res["sweep"] = {"width": widths, "TE0": table[0], "TE1": table[1], "TE2": table[2]}
         self.save()
 
     def _curves(self):
@@ -316,16 +333,16 @@ class Study:
                     guess = d["wb_star"] + dw * d["s_a"] / d["s_b"]
                     ac = self.anticrossing(d["wa"] + dw, gap - dw, wl, guess)
                 dn_det = ac["slope"] * ((d["wb_star"] + dw) - ac["wb_star"])
-                pts.append(dict(dw=dw, dn_min=ac["dn_min"], dn_det=dn_det,
-                                eta=float(conversion(ac["dn_min"], dn_det, d["Lc"], wl))))
+                pts.append({"dw": dw, "dn_min": ac["dn_min"], "dn_det": dn_det,
+                            "eta": float(conversion(ac["dn_min"], dn_det, d["Lc"], wl))})
             deg = min(2, len(errors) - 1)
             dn_min_f = np.polyval(np.polyfit(errors, [p["dn_min"] for p in pts], deg), fine)
             dn_det_f = np.polyval(np.polyfit(errors, [p["dn_det"] for p in pts], deg), fine)
             residual = to_dB(1 - conversion(dn_min_f, dn_det_f, d["Lc"], wl))
             tol = symmetric_tolerance(fine, residual, cfg["residual_limit_dB"])
-            out.append(dict(m=d["m"], wa=d["wa"], points=pts, dw=fine.tolist(),
-                            residual_dB=residual.tolist(), tol=tol,
-                            tol_is_lower_bound=bool(tol >= min(-errors[0], errors[-1]) - 1e-9)))
+            out.append({"m": d["m"], "wa": d["wa"], "points": pts, "dw": fine.tolist(),
+                        "residual_dB": residual.tolist(), "tol": tol,
+                        "tol_is_lower_bound": bool(tol >= min(-errors[0], errors[-1]) - 1e-9)})
             flag = ">=" if out[-1]["tol_is_lower_bound"] else "  "
             print(f"  TE0-TE{d['m']}  W_a = {d['wa']:4.0f} nm:  tolerance {flag}+/-{tol:4.1f} nm "
                   f"(first-order estimate +/-{d['tol_cmt']:.1f} nm)   "
@@ -346,15 +363,15 @@ class Study:
             for wl in wls:
                 ac = d if wl == wl0 else self.anticrossing(d["wa"], gap, wl, d["wb_star"])
                 dn_det = ac["slope"] * (d["wb_star"] - ac["wb_star"])
-                pts.append(dict(wl=wl, dn_min=ac["dn_min"], dn_det=dn_det,
-                                eta=float(conversion(ac["dn_min"], dn_det, d["Lc"], wl))))
+                pts.append({"wl": wl, "dn_min": ac["dn_min"], "dn_det": dn_det,
+                            "eta": float(conversion(ac["dn_min"], dn_det, d["Lc"], wl))})
             deg = min(2, len(wls) - 1)
             dn_min_f = np.polyval(np.polyfit(wls, [p["dn_min"] for p in pts], deg), fine)
             dn_det_f = np.polyval(np.polyfit(wls, [p["dn_det"] for p in pts], deg), fine)
             eta = conversion(dn_min_f, dn_det_f, d["Lc"], fine)
-            out.append(dict(m=d["m"], wa=d["wa"], points=pts, wl=fine.tolist(),
-                            loss_dB=(-to_dB(eta)).tolist(),
-                            worst_residual_c_band_dB=float(to_dB(1 - eta[band]).max())))
+            out.append({"m": d["m"], "wa": d["wa"], "points": pts, "wl": fine.tolist(),
+                        "loss_dB": (-to_dB(eta)).tolist(),
+                        "worst_residual_c_band_dB": float(to_dB(1 - eta[band]).max())})
             print(f"  TE0-TE{d['m']}  W_a = {d['wa']:4.0f} nm:  worst unconverted power in the C-band "
                   f"{out[-1]['worst_residual_c_band_dB']:6.1f} dB")
         self.res["wavelength"] = out
@@ -372,12 +389,12 @@ class Study:
                 if key not in self.cache:
                     try:
                         self.cache[key] = list(self.s.bend_loss(wa, r, wl, n_guess=n0))
-                    except Exception as err:                       # keep the rest of the study alive
+                    except Exception as err:  # keep the rest of the study alive  # noqa: BLE001
                         print(f"  bend solve failed for W_a = {wa}, R = {r}: {err}")
                         self.cache[key] = [float("nan"), float("nan")]
                 neff, loss = self.cache[key]
                 per90 = loss * (math.pi / 2) * r * 1e-9            # dB/m (at the core) times the arc length in m
-                out.append(dict(wa=wa, radius=r, neff=neff, loss_dB_per_m=loss, loss_dB_per_90deg=per90))
+                out.append({"wa": wa, "radius": r, "neff": neff, "loss_dB_per_m": loss, "loss_dB_per_90deg": per90})
                 print(f"  W_a = {wa:4.0f} nm, R = {r / 1e3:4.1f} um:  {loss:10.3g} dB/m  = {per90:9.3g} dB per 90 deg")
         self.res["bend"] = out
         self.save()
@@ -397,8 +414,8 @@ class Study:
         for res in cfg["convergence_resolutions"]:
             self.s.resolution = res
             ac = self.anticrossing(base, gap, wl, d1["wb_star"])
-            rows.append(dict(resolution=res, n_a=self.n_iso(base, wl), wb_star=ac["wb_star"],
-                             Lc=wl / (2 * ac["dn_min"])))
+            rows.append({"resolution": res, "n_a": self.n_iso(base, wl), "wb_star": ac["wb_star"],
+                         "Lc": wl / (2 * ac["dn_min"])})
             print(f"  {res:6.0f}  {rows[-1]['n_a']:14.4f}  {ac['wb_star']:12.1f}  {rows[-1]['Lc'] / 1e3:8.2f}")
         self.s.resolution = keep
         val["convergence"] = rows
@@ -410,7 +427,7 @@ class Study:
               "(bus of its corrugated coupler)")
         print(f"  bus width, anticrossing (this study): {d1['wb_star']:7.1f} nm")
         print(f"  coupling length from supermodes:      {d1['Lc'] / 1e3:7.2f} um    paper {w['Lc_um']} um")
-        val["wang"] = dict(wb_iso=d1["wb_iso"], wb_star=d1["wb_star"], Lc=d1["Lc"], paper=w)
+        val["wang"] = {"wb_iso": d1["wb_iso"], "wb_star": d1["wb_star"], "Lc": d1["Lc"], "paper": w}
 
         p = DAI_2013
         print("\n[validate] 3. Published TM0-TM1 coupler (Dai et al. 2013: "
@@ -433,8 +450,8 @@ class Study:
             print(f"  coupling length from supermodes:      {lc / 1e3:7.2f} um    paper {p['Lc_um']} um")
             print("  (The paper's lengths are straight sections from 3D FDTD. Its S-bends add coupling,")
             print("   so the straight section is shorter than the supermode coupling length.)")
-            val["dai"] = dict(wb_iso=wb_iso, wb_star=ac["wb_star"], Lc=lc, paper=p)
-        except Exception as err:
+            val["dai"] = {"wb_iso": wb_iso, "wb_star": ac["wb_star"], "Lc": lc, "paper": p}
+        except Exception as err:  # report it and go on with the other checks  # noqa: BLE001
             print(f"  TM benchmark failed: {err}")
         finally:
             self.s.side_margin, self.s.vert_margin, self.s.fixed_indices = saved[:3]
@@ -496,7 +513,7 @@ class Study:
                 if os.path.exists(path):
                     try:
                         meta = modefields.load(path)["meta"]
-                    except Exception:
+                    except Exception:  # an unreadable file is solved again  # noqa: BLE001
                         meta = None
                     if meta is not None and meta.get("key") != key:
                         meta = None                       # saved for another geometry or grid
@@ -548,23 +565,23 @@ class Study:
         acc, bus = mode(fa, ga[0]), mode(fb, gb[m])
         acc = modefields.rotated(acc, modefields.phase_at(acc, x, y, (x_acc, 0.0)))
         bus = modefields.rotated(bus, modefields.phase_at(bus, x, y, lobe))
-        out, checks = dict(access=acc, bus=bus), {}
+        out, checks = {"access": acc, "bus": bus}, {}
         for name, i in (("upper", iu), ("lower", il)):
             sup = mode(fc, i)
             alpha, beta, share, residual = modefields.decompose(sup, acc, bus, w)
             out[name] = modefields.rotated(sup, np.conj(alpha) / abs(alpha))
-            checks[name] = dict(share=share, residual=residual,
-                                bus_sign=int(np.sign(np.real(beta * np.conj(alpha)))))
-        picked = dict(access=(na, ta, ga[0]), bus=(nb, tb, gb[m]), upper=(nc, tc, iu), lower=(nc, tc, il))
-        meta = dict(key=key, tag=tag, backend=s.name, resolution=s.resolution, wavelength=wl, h_si=s.h_si,
-                    coupler=m, access_width=d["wa"], width_error=dw,
-                    cores=[[float(c), float(cw)] for c, cw in cores],
-                    norm="power" if "Hx" in comps else "field",
-                    modes={n: dict(neff=float(nn[i]), te=float(tt[i])) for n, (nn, tt, i) in picked.items()},
-                    checks=checks, dn_s=float(nc[iu] - nc[il]),
-                    tail_dB=modefields.level_dB(acc, x, y, x_bus - w_bus / 2),
-                    edge_fraction=max(modefields.edge_fraction(f, x, y, w) for f in out.values()),
-                    imaginary_fraction=max(modefields.imaginary_fraction(f, w) for f in out.values()))
+            checks[name] = {"share": share, "residual": residual,
+                            "bus_sign": int(np.sign(np.real(beta * np.conj(alpha))))}
+        picked = {"access": (na, ta, ga[0]), "bus": (nb, tb, gb[m]), "upper": (nc, tc, iu), "lower": (nc, tc, il)}
+        meta = {"key": key, "tag": tag, "backend": s.name, "resolution": s.resolution, "wavelength": wl, "h_si": s.h_si,
+                "coupler": m, "access_width": d["wa"], "width_error": dw,
+                "cores": [[float(c), float(cw)] for c, cw in cores],
+                "norm": "power" if "Hx" in comps else "field",
+                "modes": {n: {"neff": float(nn[i]), "te": float(tt[i])} for n, (nn, tt, i) in picked.items()},
+                "checks": checks, "dn_s": float(nc[iu] - nc[il]),
+                "tail_dB": modefields.level_dB(acc, x, y, x_bus - w_bus / 2),
+                "edge_fraction": max(modefields.edge_fraction(f, x, y, w) for f in out.values()),
+                "imaginary_fraction": max(modefields.imaginary_fraction(f, w) for f in out.values())}
         if path is not None:
             c = cfg["mode_crop"]
             xlim = (min(cc - cw / 2 for cc, cw in cores) - c, max(cc + cw / 2 for cc, cw in cores) + c)
@@ -619,24 +636,25 @@ class Study:
         out = []
         for d in self._designs():
             wb = even.get((d["m"], d["wa"]), d["wb_iso"])
-            for attempt in range(3):                      # check; correct at most twice, then re-check
-                meta = self._matched_set(d, wb, 0.0)
+            meta = self._matched_set(d, wb, 0.0)          # check W_pm with one solve ...
+            for _ in range(2):                            # ... and correct it at most twice
                 s0 = meta["checks"]["upper"]["share"]
                 if abs(s0 - 0.5) <= 0.02:
                     break
-                if attempt < 2:
-                    wb -= (1 - 2 * s0) * meta["dn_s"] / d["s_b"]
-            else:
+                wb -= (1 - 2 * s0) * meta["dn_s"] / d["s_b"]
+                meta = self._matched_set(d, wb, 0.0)
+            s0 = meta["checks"]["upper"]["share"]
+            if abs(s0 - 0.5) > 0.02:
                 print(f"  warning: TE0-TE{d['m']} W_a = {d['wa']:g} nm: access share {s0:.3f} "
                       f"after two corrections; W_pm = {wb:.1f} nm is kept")
             pts = []
             for dw in errors:
                 meta = self._matched_set(d, wb, dw)
                 s, dn_s = meta["checks"]["upper"]["share"], meta["dn_s"]
-                pts.append(dict(dw=dw, share=s, dn_s=dn_s, dn_det=(1 - 2 * s) * dn_s,
-                                dn_min=2 * math.sqrt(s * (1 - s)) * dn_s,
-                                residual=max(meta["checks"]["upper"]["residual"],
-                                             meta["checks"]["lower"]["residual"])))
+                pts.append({"dw": dw, "share": s, "dn_s": dn_s, "dn_det": (1 - 2 * s) * dn_s,
+                            "dn_min": 2 * math.sqrt(s * (1 - s)) * dn_s,
+                            "residual": max(meta["checks"]["upper"]["residual"],
+                                             meta["checks"]["lower"]["residual"])})
             p0 = next(p for p in pts if p["dw"] == 0)
             L_pm = wl / (2 * p0["dn_s"])
             for p in pts:
@@ -646,11 +664,11 @@ class Study:
             dn_det_f = np.polyval(np.polyfit(errors, [p["dn_det"] for p in pts], deg), fine)
             residual = to_dB(1 - conversion(dn_min_f, dn_det_f, L_pm, wl))
             tol = symmetric_tolerance(fine, residual, cfg["residual_limit_dB"])
-            out.append(dict(m=d["m"], wa=d["wa"], wb_star=d["wb_star"], wb_iso=d["wb_iso"], wb_pm=float(wb),
-                            share0=p0["share"], Lc_star=d["Lc"], Lc_pm=float(L_pm), points=pts,
-                            dw=fine.tolist(), residual_dB=residual.tolist(), tol=tol,
-                            tol_is_lower_bound=bool(tol >= min(-errors[0], errors[-1]) - 1e-9),
-                            tol_model=tol_w.get((d["m"], d["wa"]), float("nan"))))
+            out.append({"m": d["m"], "wa": d["wa"], "wb_star": d["wb_star"], "wb_iso": d["wb_iso"], "wb_pm": float(wb),
+                        "share0": p0["share"], "Lc_star": d["Lc"], "Lc_pm": float(L_pm), "points": pts,
+                        "dw": fine.tolist(), "residual_dB": residual.tolist(), "tol": tol,
+                        "tol_is_lower_bound": bool(tol >= min(-errors[0], errors[-1]) - 1e-9),
+                        "tol_model": tol_w.get((d["m"], d["wa"]), float("nan"))})
             r = out[-1]
             print(f"  TE0-TE{d['m']}  {d['wa']:4.0f}  {d['wb_star']:7.1f}  {wb:7.1f}  {p0['share']:5.3f}"
                   f"  {d['Lc'] / 1e3:7.2f}  {L_pm / 1e3:7.2f}        +/-{r['tol_model']:4.2f}"
@@ -672,7 +690,7 @@ class Study:
         return (float(np.polyval(np.polyfit(e, [p["dn_min"] for p in pts], deg), dw)),
                 float(np.polyval(np.polyfit(e, [p["dn_det"] for p in pts], deg), dw)))
 
-    def _mode_row(self, d, dw, meta, t):
+    def _mode_row(self, d, dw, meta, t) -> dict[str, Any]:
         """One line of the field checks, next to the two-mode model of the tolerance step.
 
         In two-mode coupled-mode theory the upper supermode's access share s fixes the
@@ -684,17 +702,17 @@ class Study:
         ck, md, wl = meta["checks"], meta["modes"], self.cfg["wavelength"]
         s_u, dn_s = ck["upper"]["share"], meta["dn_s"]
         eta = 4 * s_u * (1 - s_u) * np.sin(np.pi * dn_s * d["Lc"] / wl) ** 2
-        row = dict(m=d["m"], wa=d["wa"], dw=dw, file=f"modes/{meta['tag']}.npz", norm=meta["norm"],
-                   wb_star=d["wb_star"], wb_iso=d["wb_iso"], s_b=d["s_b"], Lc=d["Lc"],
-                   n_access=md["access"]["neff"], n_bus=md["bus"]["neff"],
-                   n_upper=md["upper"]["neff"], n_lower=md["lower"]["neff"],
-                   te_upper=md["upper"]["te"], te_lower=md["lower"]["te"], dn_s=dn_s,
-                   share_upper=s_u, share_lower=ck["lower"]["share"],
-                   residual_upper=ck["upper"]["residual"], residual_lower=ck["lower"]["residual"],
-                   bus_sign_upper=ck["upper"]["bus_sign"], bus_sign_lower=ck["lower"]["bus_sign"],
-                   dn_det_fields=(1 - 2 * s_u) * dn_s, eta_fields=float(eta),
-                   unconverted_fields_dB=float(to_dB(1 - eta)),
-                   tail_dB=meta["tail_dB"], edge_fraction=meta["edge_fraction"])
+        row = {"m": d["m"], "wa": d["wa"], "dw": dw, "file": f"modes/{meta['tag']}.npz", "norm": meta["norm"],
+               "wb_star": d["wb_star"], "wb_iso": d["wb_iso"], "s_b": d["s_b"], "Lc": d["Lc"],
+               "n_access": md["access"]["neff"], "n_bus": md["bus"]["neff"],
+               "n_upper": md["upper"]["neff"], "n_lower": md["lower"]["neff"],
+               "te_upper": md["upper"]["te"], "te_lower": md["lower"]["te"], "dn_s": dn_s,
+               "share_upper": s_u, "share_lower": ck["lower"]["share"],
+               "residual_upper": ck["upper"]["residual"], "residual_lower": ck["lower"]["residual"],
+               "bus_sign_upper": ck["upper"]["bus_sign"], "bus_sign_lower": ck["lower"]["bus_sign"],
+               "dn_det_fields": (1 - 2 * s_u) * dn_s, "eta_fields": float(eta),
+               "unconverted_fields_dB": float(to_dB(1 - eta)),
+               "tail_dB": meta["tail_dB"], "edge_fraction": meta["edge_fraction"]}
         # Bus width at which the nominal coupler's supermodes would be an even mixture:
         # W* moved by the detuning the fields show, over the bus slope dn/dW.
         row["wb_even_fields"] = float(d["wb_star"] - row["dn_det_fields"] / d["s_b"]) if dw == 0 else float("nan")
@@ -833,7 +851,8 @@ def main():
 
     if steps == ["plots"]:
         import plots
-        plots.make_all(json.load(open(os.path.join(outdir, "results.json"))), cfg, outdir)
+        with open(os.path.join(outdir, "results.json")) as f:
+            plots.make_all(json.load(f), cfg, outdir)
         return
     os.makedirs(outdir, exist_ok=True)
     from solver_emode import EModeSolver

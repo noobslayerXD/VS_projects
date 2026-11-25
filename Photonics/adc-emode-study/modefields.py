@@ -139,7 +139,7 @@ def save(path, x, y, modes, meta, xlim, ylim):
     """
     ix = (x >= xlim[0]) & (x <= xlim[1])
     iy = (y >= ylim[0]) & (y <= ylim[1])
-    arrays = dict(x=x[ix].astype(np.float32), y=y[iy].astype(np.float32))
+    arrays = {"x": x[ix].astype(np.float32), "y": y[iy].astype(np.float32)}
     for name, f in modes.items():
         for comp in ("Ex", "Ey"):
             v = f[comp][np.ix_(ix, iy)]
@@ -155,4 +155,4 @@ def load(path):
         meta = json.loads(str(z["meta"]))
         modes = {n: dict(Ex=z[f"{n}_Ex"], Ey=z[f"{n}_Ey"], **meta["modes"][n])
                  for n in meta["modes"]}
-        return dict(x=z["x"].astype(float), y=z["y"].astype(float), meta=meta, modes=modes)
+        return {"x": z["x"].astype(float), "y": z["y"].astype(float), "meta": meta, "modes": modes}

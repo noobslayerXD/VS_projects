@@ -2,11 +2,11 @@
 and, for fig8 to fig11, the mode fields saved in <outdir>/modes/."""
 import os
 
-import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib.patches import Rectangle
+
+plt.switch_backend("Agg")                 # draw to files only: no windows, works without a display
 
 # Colours are matplotlib's defaults: C0 for TE0->TE1, C1 for TE0->TE2, C<i> for the i-th access
 # width, black for reference lines. Mode maps use EMode's colour scale (see _field_panel).
@@ -234,9 +234,8 @@ def _field_panel(ax, data, name, xlim, ylim):
     x, y = data["x"], data["y"]
     ex = np.abs(data["modes"][name]["Ex"])
     dx, dy = np.diff(x).mean(), np.diff(y).mean()
-    im = ax.imshow((ex / ex.max()).T, origin="lower", cmap="plasma", vmin=0, vmax=1,
-                   extent=[x[0] - dx / 2, x[-1] + dx / 2, y[0] - dy / 2, y[-1] + dy / 2],
-                   interpolation="bilinear")
+    ax.imshow((ex / ex.max()).T, origin="lower", cmap="plasma", vmin=0, vmax=1,
+              extent=(x[0] - dx / 2, x[-1] + dx / 2, y[0] - dy / 2, y[-1] + dy / 2), interpolation="bilinear")
     h = data["meta"]["h_si"]
     for c, w in data["meta"]["cores"]:
         ax.add_patch(Rectangle((c - w / 2, -h / 2), w, h, fill=False, ec="white", lw=0.7))
@@ -248,7 +247,6 @@ def _field_panel(ax, data, name, xlim, ylim):
     ax.grid(False)
     for s in ax.spines.values():
         s.set_visible(False)
-    return im
 
 
 def _scale_bar(ax, xlim, ylim, length=500):
@@ -267,8 +265,8 @@ def _field_grid(nrows, ncols, pw, ph, left=1.2, right=1.05, top=0.78, bottom=0.1
     fig.subplots_adjust(left=left / fw, right=(fw - right) / fw, bottom=bottom / fh, top=(fh - top) / fh,
                         wspace=gapw / pw, hspace=gaph / ph)
     ch = min(2.2, nrows * ph)
-    cax = fig.add_axes([(fw - right + 0.18) / fw, (bottom + (nrows * ph + (nrows - 1) * gaph - ch) / 2) / fh,
-                        0.09 / fw, ch / fh])
+    cax = fig.add_axes(((fw - right + 0.18) / fw, (bottom + (nrows * ph + (nrows - 1) * gaph - ch) / 2) / fh,
+                        0.09 / fw, ch / fh))
     return fig, axes, cax
 
 
@@ -299,7 +297,7 @@ def fig_mode_gallery(res, cfg, outdir, note, m):
         xlim, ylim = views[i]
         for j, (name, title) in enumerate(cols):
             ax = axes[i, j]
-            im = _field_panel(ax, data, name, xlim, ylim)
+            _field_panel(ax, data, name, xlim, ylim)
             label = f"n$_{{eff}}$ {data['modes'][name]['neff']:.3f}"
             if name in ("upper", "lower"):
                 label += f"   access {100 * r['share_' + name]:.0f} %"
@@ -310,7 +308,7 @@ def fig_mode_gallery(res, cfg, outdir, note, m):
         axes[i, 0].text(-0.03, 0.5, f"W$_a$ {wa:.0f} nm\nbus {wb:.0f} nm", transform=axes[i, 0].transAxes,
                         ha="right", va="center", fontsize=8)
     _scale_bar(axes[-1, 0], xlim, ylim)
-    _field_colorbar(fig, im, cax)
+    _field_colorbar(fig, axes[0, 0].images[0], cax)
     fig.suptitle(f"{COUPLER[m]} couplers as designed (bus width W*): the strip modes and the two "
                  "supermodes", x=0.01, ha="left", fontsize=10, fontweight="bold")
     _save(fig, outdir, f"fig{7 + m}_modes_TE0-TE{m}.png", note)
@@ -339,7 +337,7 @@ def fig_supermodes_error(res, cfg, outdir, note):
         xlim, ylim = views[i]
         for j, e in enumerate(errors):
             ax, r = axes[i, j], rows[(m, wa, e)]
-            im = _field_panel(ax, sets[(m, wa, e)], "upper", xlim, ylim)
+            _field_panel(ax, sets[(m, wa, e)], "upper", xlim, ylim)
             ax.text(0.02, 0.95, f"access {100 * r['share_upper']:.0f} %", transform=ax.transAxes,
                     va="top", ha="left", fontsize=7.5, color="white")
             if i == 0:
@@ -347,7 +345,7 @@ def fig_supermodes_error(res, cfg, outdir, note):
         axes[i, 0].text(-0.03, 0.5, f"{COUPLER[m]}\nW$_a$ {wa:.0f} nm", transform=axes[i, 0].transAxes,
                         ha="right", va="center", fontsize=8)
     _scale_bar(axes[-1, 0], xlim, ylim)
-    _field_colorbar(fig, im, cax)
+    _field_colorbar(fig, axes[0, 0].images[0], cax)
     fig.suptitle("Upper supermode under a uniform width error: its share in the access strip "
                  "(50 % = phase matched)", x=0.01, ha="left", fontsize=10, fontweight="bold")
     _save(fig, outdir, "fig10_supermodes_width_error.png", note)

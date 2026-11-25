@@ -4,6 +4,7 @@ model (no mode solver), so this tests the Python, not EMode's numbers.
 
     python tests/test_modes_step.py
 """
+import importlib
 import os
 import sys
 import tempfile
@@ -15,10 +16,11 @@ study = next(p for p in (os.path.join(here, ".."), os.path.join(here, "..", "adc
              if os.path.exists(os.path.join(p, "adc_study.py")))
 sys.path.insert(0, os.path.join(here, "mock_emode"))
 sys.path.insert(0, os.path.abspath(study))
-import adc_study  # noqa: E402
-import modefields as mf  # noqa: E402
-import plots  # noqa: E402
-from solver_emode import EModeSolver  # noqa: E402
+# Imported only now that the paths are set: the study and the solver under test.
+adc_study = importlib.import_module("adc_study")
+mf = importlib.import_module("modefields")
+plots = importlib.import_module("plots")
+EModeSolver = importlib.import_module("solver_emode").EModeSolver
 
 # 1. Helpers. Cell sizes add up to the span of the grid, uniform or not.
 for x in (np.arange(5.0, 100, 10), np.array([0.0, 10, 30, 35, 60])):

@@ -42,20 +42,20 @@ import numpy as np
 
 CONSTRUCTOR = {"simulation_name", "license_type", "clear", "save_path", "verbose", "roaming",
                "open_existing", "new_name", "priority", "emode_cmd", "force_open", "save"}
-SETTINGS_DEFAULTS = dict(
-    profile="_default", wavelength=1550, frequency=None, excitation=None, simulation_name="emode",
-    propagation_resolution=None, window_width=None, window_height=None,
-    x_resolution="auto", y_resolution="auto", boundary_condition="auto",
-    pml_NSEW_bool=[0, 0, 0, 0], num_pml_layers=None, pml_thickness=0, pml_order=3,
-    pml_reflection=1e-8, pml_kappa_max=7, pml_alpha_max=0, remove_pml_modes_bool=False,
-    pml_seed_bool=False, num_modes=1, max_effective_index=0, tolerance=1e-12, field_to_solve="Et",
-    solver="default", solver_threads=0, solve_workers="auto", sparse_solver="auto",
-    bend_radius=0, bend_method="cylindrical", background_material="Vacuum",
-    expansion_resolution=20, expansion_size=0, subpixel_avg=True, subpixel_tensor="auto",
-    generate_chi2=False, include_heat=True, include_scattering=False, error_reporting=True,
-    fem_order=2, fem_points_per_wavelength=3, fem_min_angle=30, fem_smooth_passes=3,
-    fem_refine_fraction=0.5, fem_max_refinements=3, fem_neff_tolerance=1e-6, fem_max_dofs=2000000,
-    fem_mesh_wavelength=0)
+SETTINGS_DEFAULTS = {
+    "profile": "_default", "wavelength": 1550, "frequency": None, "excitation": None, "simulation_name": "emode",
+    "propagation_resolution": None, "window_width": None, "window_height": None,
+    "x_resolution": "auto", "y_resolution": "auto", "boundary_condition": "auto",
+    "pml_NSEW_bool": [0, 0, 0, 0], "num_pml_layers": None, "pml_thickness": 0, "pml_order": 3,
+    "pml_reflection": 1e-8, "pml_kappa_max": 7, "pml_alpha_max": 0, "remove_pml_modes_bool": False,
+    "pml_seed_bool": False, "num_modes": 1, "max_effective_index": 0, "tolerance": 1e-12, "field_to_solve": "Et",
+    "solver": "default", "solver_threads": 0, "solve_workers": "auto", "sparse_solver": "auto",
+    "bend_radius": 0, "bend_method": "cylindrical", "background_material": "Vacuum",
+    "expansion_resolution": 20, "expansion_size": 0, "subpixel_avg": True, "subpixel_tensor": "auto",
+    "generate_chi2": False, "include_heat": True, "include_scattering": False, "error_reporting": True,
+    "fem_order": 2, "fem_points_per_wavelength": 3, "fem_min_angle": 30, "fem_smooth_passes": 3,
+    "fem_refine_fraction": 0.5, "fem_max_refinements": 3, "fem_neff_tolerance": 1e-6, "fem_max_dofs": 2000000,
+    "fem_mesh_wavelength": 0}
 SHAPE = {"profile", "name", "material", "fill_material", "loss_dB_per_m", "shape_type", "vertices",
          "width", "height", "position", "sidewall_angle", "mask", "mask_offset", "tone", "etch_depth",
          "correlation_length", "roughness_rms", "roughness_field_side", "priority", "fem_resolution",
@@ -190,12 +190,12 @@ class EMode:
             # A PML mode first, to test that the caller skips it.
             self.out.update(effective_index=[1.30, n_win], TE_fraction=[0.6, 0.98],
                             loss_dB_per_m=[5e6, loss_win], PML_indices=[0])
-            self.truth = dict(n_core=n_true, loss_core=loss_true)
+            self.truth = {"n_core": n_true, "loss_core": loss_true}
         else:
             assert s["pml_NSEW_bool"] == [0, 0, 0, 0] and s["max_effective_index"] == 0
             y_core = next(iter(self.shapes.values()))["position"][1]
             self._straight(cores, n_core, n_clad, wl, W, H, res, y_core, s["num_modes"])
-        CALLS.append(("FDM", dict(BC=self.out["BC"], W=W, H=H, res=res)))
+        CALLS.append(("FDM", {"BC": self.out["BC"], "W": W, "H": H, "res": res}))
         return {"n_eff_tilde": self.out["effective_index"], "TE_fraction": self.out["TE_fraction"]}
 
     def _straight(self, cores, n_core, n_clad, wl, W, H, res, y_core, num_modes):
@@ -221,10 +221,12 @@ class EMode:
         vals, vecs = np.linalg.eigh(ham)
         modes = []
         for k in np.argsort(-vals)[:num_modes]:
-            ex = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TE")
-            ey = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TM")
-            ex = ex if isinstance(ex, np.ndarray) else np.zeros((xe.size, ye.size))
-            ey = ey if isinstance(ey, np.ndarray) else np.zeros((xe.size, ye.size))
+            ex, ey = np.zeros((xe.size, ye.size)), np.zeros((xe.size, ye.size))
+            for i, b in enumerate(basis):                 # TE strip modes make Ex, TM ones Ey
+                if b[1] == "TE":
+                    ex = ex + vecs[i, k] * b[2]
+                elif b[1] == "TM":
+                    ey = ey + vecs[i, k] * b[2]
             te = float((ex**2).sum() / ((ex**2).sum() + (ey**2).sum()))
             modes.append((float(vals[k]), te, ex, ey))
         while len(modes) < num_modes:                     # unguided box modes
@@ -236,12 +238,12 @@ class EMode:
 
         def arrange(a):
             return a if FIELD_LAYOUT == "xy" else a.T
-        self.fields = dict(
-            x=xe, y=ye,
-            Ex=np.array([arrange(m[2]) for m in modes]).astype(complex),
-            Ey=np.array([arrange(m[3]) for m in modes]).astype(complex),
-            Hx=np.array([arrange(-m[0] * m[3]) for m in modes]).astype(complex),
-            Hy=np.array([arrange(m[0] * m[2]) for m in modes]).astype(complex))
+        self.fields = {
+            "x": xe, "y": ye,
+            "Ex": np.array([arrange(m[2]) for m in modes]).astype(complex),
+            "Ey": np.array([arrange(m[3]) for m in modes]).astype(complex),
+            "Hx": np.array([arrange(-m[0] * m[3]) for m in modes]).astype(complex),
+            "Hy": np.array([arrange(m[0] * m[2]) for m in modes]).astype(complex)}
 
     def get(self, key, profile="_default", simulation_name="emode"):
         if key in DEPRECATED:
