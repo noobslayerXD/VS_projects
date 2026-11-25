@@ -64,7 +64,7 @@ class EModeSolver:
         self.side_margin = side_margin    # nm, cladding left/right of the outermost core
         self.vert_margin = vert_margin    # nm, cladding above/below the silicon
         self.core, self.clad = core, clad # names from EMode's material database
-        self.fixed_indices = None         # (n_core, n_clad): constant indices instead of the database
+        self.fixed_indices: tuple[float, float] | None = None   # (n_core, n_clad) instead of the database
         self.verbose = verbose            # True prints EMode's own output for every solve
         # Bend solver (values from the 'Bend Mode Solvers' and 'Ring Resonator Design' examples)
         self.pml_side = 1500              # nm, PML on the outer (east) wall of the bend
