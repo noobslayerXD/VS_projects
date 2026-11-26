@@ -16,14 +16,14 @@ the report picks the new files up on the next build.
 import json
 import os
 
-import numpy as np
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 
-import modefields
 import plots
+from adc_study import load_modes
 from plots import COUPLER, _field_panel
+
+plt.switch_backend("Agg")                         # draw to files only: no windows, works without a display
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 EMODE = os.path.join(HERE, "results_emode")
@@ -41,7 +41,8 @@ plt.rcParams.update({"font.family": "DejaVu Sans", "mathtext.fontset": "dejavusa
 
 
 def load(folder):
-    return json.load(open(os.path.join(folder, "results.json")))
+    with open(os.path.join(folder, "results.json")) as f:
+        return json.load(f)
 
 
 def save(fig, name):
@@ -81,7 +82,7 @@ def fig_tolerance(res):
     """(a, b) unconverted power against width error; (c) tolerance against access width."""
     lim = -15.0
     widths = sorted({t["wa"] for t in res["tolerance"]})
-    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.85), gridspec_kw=dict(width_ratios=[1, 1, 1.05]))
+    fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.85), gridspec_kw={"width_ratios": [1, 1, 1.05]})
     for ax, m, tag in ((axes[0], 1, "(a)"), (axes[1], 2, "(b)")):
         for t in sorted((t for t in res["tolerance"] if t["m"] == m), key=lambda t: t["wa"]):
             col = f"C{widths.index(t['wa'])}"
@@ -119,7 +120,7 @@ def fig_tolerance(res):
 def fig_modes(res):
     """Mode gallery: access mode, bus mode and the two supermodes of three nominal couplers."""
     rows = [(1, 320), (1, 480), (2, 320)]
-    sets = [modefields.load(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
+    sets = [load_modes(os.path.join(EMODE, "modes", f"TE0-TE{m}_wa{wa}_dw+0.npz")) for m, wa in rows]
     info = {(r["m"], r["wa"]): r for r in res["modes"] if r["dw"] == 0}
     views = [xlim for xlim, _ in plots._views([[s] for s in sets], margin=380)]
     xlim, ylim = views[0], (-110 - 300, 110 + 300)
@@ -133,7 +134,7 @@ def fig_modes(res):
         r, xlim = info[(m, wa)], views[i]
         for j, (name, title) in enumerate(cols):
             ax = axes[i, j]
-            im = _field_panel(ax, data, name, xlim, ylim)
+            _field_panel(ax, data, name, xlim, ylim)
             for p in ax.patches:
                 p.set_linewidth(0.5)
             label = f"{data['modes'][name]['neff']:.3f}"
@@ -148,9 +149,9 @@ def fig_modes(res):
     plots._scale_bar(axes[-1, 0], xlim, ylim, length=500)
     for t in axes[-1, 0].texts[-1:]:
         t.set_fontsize(5.8)
-    cb = fig.colorbar(im, cax=cax, ticks=[0, 0.5, 1])
+    cb = fig.colorbar(axes[0, 0].images[0], cax=cax, ticks=[0, 0.5, 1])
     cb.set_label("$|E_x|$, scaled to peak", fontsize=6.4)
-    cb.outline.set_visible(False)
+    cb.ax.spines["outline"].set_visible(False)    # = cb.outline, which matplotlib 3.10 types as Spines
     cb.ax.tick_params(length=0, labelsize=6.2)
     cb.ax.grid(False)
     save(fig, "report_modes.pdf")
@@ -163,7 +164,7 @@ def fig_fieldchecks(res):
     fig, axes = plt.subplots(1, 3, figsize=(TEXTWIDTH, 1.76))
     ax = axes[0]
     for k, wa in enumerate(sorted({r["wa"] for r in nominal})):
-        data = modefields.load(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
+        data = load_modes(os.path.join(EMODE, "modes", f"TE0-TE1_wa{wa:g}_dw+0.npz"))
         x, y = data["x"], data["y"]
         j = int(np.argmin(np.abs(y)))
         ex2 = np.abs(np.real(data["modes"]["access"]["Ex"][:, j])) ** 2
@@ -258,10 +259,10 @@ def summary(res):
         print("   first order minus re-solved (nm):",
               {wa: round(d["tol_cmt"] - tol[(m, wa)]["tol"], 2) for (mm, wa), d in des.items() if mm == m})
     rows = res["modes"]
-    print("\nmax two-mode residual (EMode): %.4f" % max(max(r["residual_upper"], r["residual_lower"]) for r in rows))
-    print("max |dn_s solved - fit| / fit: %.4f" % max(abs(r["dn_s"] - r["dn_s_model"]) / r["dn_s_model"] for r in rows))
-    print("min TE fraction: %.3f" % min(min(r["te_upper"], r["te_lower"]) for r in rows))
-    print("max edge fraction: %.1e" % max(r["edge_fraction"] for r in rows))
+    print(f"\nmax two-mode residual (EMode): {max(max(r['residual_upper'], r['residual_lower']) for r in rows):.4f}")
+    print(f"max |dn_s solved - fit| / fit: {max(abs(r['dn_s'] - r['dn_s_model']) / r['dn_s_model'] for r in rows):.4f}")
+    print(f"min TE fraction: {min(min(r['te_upper'], r['te_lower']) for r in rows):.3f}")
+    print(f"max edge fraction: {max(r['edge_fraction'] for r in rows):.1e}")
     print("tails:", {r["wa"]: round(r["tail_dB"], 1) for r in rows if r["dw"] == 0 and r["m"] == 1})
     for r in rows:
         if r["dw"] == 0:
@@ -278,14 +279,14 @@ def summary(res):
     if mat:
         mod = {(r["m"], r["wa"]): r for r in rows if r["dw"] == 0}
         p0 = [next(p for p in r["points"] if p["dw"] == 0) for r in mat]
-        print("\nmatched: access share at dW = 0 %.4f to %.4f" % (min(r["share0"] for r in mat),
-                                                                   max(r["share0"] for r in mat)))
-        print("  W_pm of the matched run and the current 'modes' estimate differ by at most %.3f nm"
-              % max(abs(r["wb_pm"] - mod[(r["m"], r["wa"])]["wb_even_fields"]) for r in mat))
-        print("  highest unconverted power at dW = 0: %.2f dB" % max(10 * np.log10(1 - p["eta"]) for p in p0))
-        print("  largest |L_pm / L_c - 1|: %.2f %%" % max(100 * abs(r["Lc_pm"] / r["Lc_star"] - 1) for r in mat))
-        print("  largest |tolerance at W_pm - re-solved|: %.2f nm" % max(abs(r["tol"] - r["tol_model"]) for r in mat))
-        print("  largest two-mode residual: %.4f" % max(p["residual"] for r in mat for p in r["points"]))
+        shares = [r["share0"] for r in mat]
+        print(f"\nmatched: access share at dW = 0 {min(shares):.4f} to {max(shares):.4f}")
+        moved = max(abs(r["wb_pm"] - mod[(r["m"], r["wa"])]["wb_even_fields"]) for r in mat)
+        print(f"  W_pm of the matched run and the current 'modes' estimate differ by at most {moved:.3f} nm")
+        print(f"  highest unconverted power at dW = 0: {max(10 * np.log10(1 - p['eta']) for p in p0):.2f} dB")
+        print(f"  largest |L_pm / L_c - 1|: {max(100 * abs(r['Lc_pm'] / r['Lc_star'] - 1) for r in mat):.2f} %")
+        print(f"  largest |tolerance at W_pm - re-solved|: {max(abs(r['tol'] - r['tol_model']) for r in mat):.2f} nm")
+        print(f"  largest two-mode residual: {max(p['residual'] for r in mat for p in r['points']):.4f}")
         for m in (1, 2):
             sel = [r for r in mat if r["m"] == m]
             gaps = [r["wb_pm"] - des[(m, r["wa"])]["wb_iso"] for r in sel]

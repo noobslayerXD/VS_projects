@@ -16,10 +16,9 @@ Documented conventions it enforces:
   - reset(kind) only 'shapes', 'settings' or 'all'; settings persist between solves
   - after a straight solve, get_grid() gives a Grid (x centred, y from the bottom wall,
     cell centres) and get_fields(key) a Field: an array [field, mode, x, y] with
-    field_names, modes in the same order as get('effective_index'). FIELD_LAYOUT = "yx"
-    swaps the last two axes, to check that the solver does not depend on it; GIVE_H =
-    False makes a request for H fail. Reading x, y or a field through get() raises, as
-    those keys are deprecated in EMode.
+    field_names, modes in the same order as get('effective_index'), each mode scaled
+    to carry 1 W: (1/2) Re sum of (E x H*).z over the cells = 1. Reading x, y or a
+    field through get() raises, as those keys are deprecated in EMode.
 
 Made-up model (only for testing):
   - a strip of width W has guided modes p = 0, 1, 2, ... of each polarization with
@@ -28,7 +27,7 @@ Made-up model (only for testing):
     kept while n_p > n_clad;
   - its field is a Hermite-Gaussian with p nodes across x (sigma = (W + D)/3) and a
     Gaussian across y (sigma = 150 nm), along x for TE and along y for TM, with
-    H = n_eff z x E, so that every mode carries positive power;
+    H = n_eff z x E, so that every mode carries positive power (scaled to 1 W);
   - modes of the same polarization in two strips couple with strength
         c = 0.02 exp(-(g - 200 nm) / 100 nm)
     (g the gap), signed like the product of the two fields in the middle of the gap,
@@ -36,26 +35,25 @@ Made-up model (only for testing):
   - unguided "box" modes with zero fields fill the list up to num_modes.
 """
 import math
-from types import SimpleNamespace
 
 import numpy as np
 
 CONSTRUCTOR = {"simulation_name", "license_type", "clear", "save_path", "verbose", "roaming",
                "open_existing", "new_name", "priority", "emode_cmd", "force_open", "save"}
-SETTINGS_DEFAULTS = dict(
-    profile="_default", wavelength=1550, frequency=None, excitation=None, simulation_name="emode",
-    propagation_resolution=None, window_width=None, window_height=None,
-    x_resolution="auto", y_resolution="auto", boundary_condition="auto",
-    pml_NSEW_bool=[0, 0, 0, 0], num_pml_layers=None, pml_thickness=0, pml_order=3,
-    pml_reflection=1e-8, pml_kappa_max=7, pml_alpha_max=0, remove_pml_modes_bool=False,
-    pml_seed_bool=False, num_modes=1, max_effective_index=0, tolerance=1e-12, field_to_solve="Et",
-    solver="default", solver_threads=0, solve_workers="auto", sparse_solver="auto",
-    bend_radius=0, bend_method="cylindrical", background_material="Vacuum",
-    expansion_resolution=20, expansion_size=0, subpixel_avg=True, subpixel_tensor="auto",
-    generate_chi2=False, include_heat=True, include_scattering=False, error_reporting=True,
-    fem_order=2, fem_points_per_wavelength=3, fem_min_angle=30, fem_smooth_passes=3,
-    fem_refine_fraction=0.5, fem_max_refinements=3, fem_neff_tolerance=1e-6, fem_max_dofs=2000000,
-    fem_mesh_wavelength=0)
+SETTINGS_DEFAULTS = {
+    "profile": "_default", "wavelength": 1550, "frequency": None, "excitation": None, "simulation_name": "emode",
+    "propagation_resolution": None, "window_width": None, "window_height": None,
+    "x_resolution": "auto", "y_resolution": "auto", "boundary_condition": "auto",
+    "pml_NSEW_bool": [0, 0, 0, 0], "num_pml_layers": None, "pml_thickness": 0, "pml_order": 3,
+    "pml_reflection": 1e-8, "pml_kappa_max": 7, "pml_alpha_max": 0, "remove_pml_modes_bool": False,
+    "pml_seed_bool": False, "num_modes": 1, "max_effective_index": 0, "tolerance": 1e-12, "field_to_solve": "Et",
+    "solver": "default", "solver_threads": 0, "solve_workers": "auto", "sparse_solver": "auto",
+    "bend_radius": 0, "bend_method": "cylindrical", "background_material": "Vacuum",
+    "expansion_resolution": 20, "expansion_size": 0, "subpixel_avg": True, "subpixel_tensor": "auto",
+    "generate_chi2": False, "include_heat": True, "include_scattering": False, "error_reporting": True,
+    "fem_order": 2, "fem_points_per_wavelength": 3, "fem_min_angle": 30, "fem_smooth_passes": 3,
+    "fem_refine_fraction": 0.5, "fem_max_refinements": 3, "fem_neff_tolerance": 1e-6, "fem_max_dofs": 2000000,
+    "fem_mesh_wavelength": 0}
 SHAPE = {"profile", "name", "material", "fill_material", "loss_dB_per_m", "shape_type", "vertices",
          "width", "height", "position", "sidewall_angle", "mask", "mask_offset", "tone", "etch_depth",
          "correlation_length", "roughness_rms", "roughness_field_side", "priority", "fem_resolution",
@@ -68,8 +66,6 @@ GRID_ARGS = {"include_expand", "include_pml", "unfold", "profile", "simulation_n
 
 CALLS = []                 # log of calls, for the test scripts
 SHIFT = 0.05               # bend: made-up outward shift of the mode; a test raises it
-FIELD_LAYOUT = "xy"        # Field array [field, mode, x, y] as documented, or "yx": [field, mode, y, x]
-GIVE_H = True              # False: get_fields with Hx or Hy fails
 
 N_SI = 3.476               # made-up silicon index (database name 'Si')
 D_PEN = 100.0              # nm, made-up penetration added to the strip width
@@ -116,6 +112,19 @@ def _check(kw, allowed, fn):
 class MaterialProperties:
     def __init__(self, n=1.0, mu=1.0):
         self.n, self.mu = n, mu
+
+
+class Grid:
+    """As EMode's Grid: the cell-centre x and y of the last solve."""
+    def __init__(self, x, y, is_pml=False, is_expanded=False, is_bc=True):
+        self.x, self.y, self.is_pml, self.is_expanded, self.is_bc = x, y, is_pml, is_expanded, is_bc
+
+
+class Field:
+    """As EMode's Field: an array [field, mode, x, y], its field names, the number of modes
+    and the grid."""
+    def __init__(self, field, field_names, num_modes, grid):
+        self.field, self.field_names, self.num_modes, self.grid = field, field_names, num_modes, grid
 
 
 def _index(material, wl):
@@ -190,12 +199,12 @@ class EMode:
             # A PML mode first, to test that the caller skips it.
             self.out.update(effective_index=[1.30, n_win], TE_fraction=[0.6, 0.98],
                             loss_dB_per_m=[5e6, loss_win], PML_indices=[0])
-            self.truth = dict(n_core=n_true, loss_core=loss_true)
+            self.truth = {"n_core": n_true, "loss_core": loss_true}
         else:
             assert s["pml_NSEW_bool"] == [0, 0, 0, 0] and s["max_effective_index"] == 0
             y_core = next(iter(self.shapes.values()))["position"][1]
             self._straight(cores, n_core, n_clad, wl, W, H, res, y_core, s["num_modes"])
-        CALLS.append(("FDM", dict(BC=self.out["BC"], W=W, H=H, res=res)))
+        CALLS.append(("FDM", {"BC": self.out["BC"], "W": W, "H": H, "res": res}))
         return {"n_eff_tilde": self.out["effective_index"], "TE_fraction": self.out["TE_fraction"]}
 
     def _straight(self, cores, n_core, n_clad, wl, W, H, res, y_core, num_modes):
@@ -221,12 +230,16 @@ class EMode:
         vals, vecs = np.linalg.eigh(ham)
         modes = []
         for k in np.argsort(-vals)[:num_modes]:
-            ex = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TE")
-            ey = sum(vecs[i, k] * b[2] for i, b in enumerate(basis) if b[1] == "TM")
-            ex = ex if isinstance(ex, np.ndarray) else np.zeros((xe.size, ye.size))
-            ey = ey if isinstance(ey, np.ndarray) else np.zeros((xe.size, ye.size))
+            ex, ey = np.zeros((xe.size, ye.size)), np.zeros((xe.size, ye.size))
+            for i, b in enumerate(basis):                 # TE strip modes make Ex, TM ones Ey
+                if b[1] == "TE":
+                    ex = ex + vecs[i, k] * b[2]
+                elif b[1] == "TM":
+                    ey = ey + vecs[i, k] * b[2]
             te = float((ex**2).sum() / ((ex**2).sum() + (ey**2).sum()))
-            modes.append((float(vals[k]), te, ex, ey))
+            # Scaled to 1 W as EMode does: with H = n z x E, (1/2) Re (E x H*).z = (n/2)|E|^2.
+            scale = 1 / math.sqrt(0.5 * vals[k] * ((ex**2).sum() + (ey**2).sum()) * res**2)
+            modes.append((float(vals[k]), te, ex * scale, ey * scale))
         while len(modes) < num_modes:                     # unguided box modes
             z = np.zeros((xe.size, ye.size))
             modes.append((n_clad - 0.01 * (len(modes) + 1), 0.5, z, z))
@@ -234,14 +247,12 @@ class EMode:
         self.out.update(effective_index=[m[0] for m in modes], TE_fraction=[m[1] for m in modes],
                         loss_dB_per_m=[0.0] * len(modes))
 
-        def arrange(a):
-            return a if FIELD_LAYOUT == "xy" else a.T
-        self.fields = dict(
-            x=xe, y=ye,
-            Ex=np.array([arrange(m[2]) for m in modes]).astype(complex),
-            Ey=np.array([arrange(m[3]) for m in modes]).astype(complex),
-            Hx=np.array([arrange(-m[0] * m[3]) for m in modes]).astype(complex),
-            Hy=np.array([arrange(m[0] * m[2]) for m in modes]).astype(complex))
+        self.fields = {
+            "x": xe, "y": ye,
+            "Ex": np.array([m[2] for m in modes]).astype(complex),
+            "Ey": np.array([m[3] for m in modes]).astype(complex),
+            "Hx": np.array([-m[0] * m[3] for m in modes]).astype(complex),
+            "Hy": np.array([m[0] * m[2] for m in modes]).astype(complex)}
 
     def get(self, key, profile="_default", simulation_name="emode"):
         if key in DEPRECATED:
@@ -252,17 +263,13 @@ class EMode:
 
     def get_grid(self, **kw):
         _check(kw, GRID_ARGS, "get_grid")
-        f = self.fields
-        return SimpleNamespace(x=f["x"], y=f["y"], is_pml=False, is_expanded=False, is_bc=True)
+        return Grid(self.fields["x"], self.fields["y"])
 
     def get_fields(self, key=None, **kw):
         _check(kw, GRID_ARGS, "get_fields")
         names = ["Ex", "Ey", "Hx", "Hy"] if key is None else ([key] if isinstance(key, str) else list(key))
-        if not GIVE_H and {"Hx", "Hy"} & set(names):
-            raise RuntimeError("no H fields in this test double")
         f = self.fields
-        return SimpleNamespace(field=np.array([f[n] for n in names]), field_names=names,
-                               num_modes=f["Ex"].shape[0], grid=self.get_grid())
+        return Field(np.array([f[n] for n in names]), names, f["Ex"].shape[0], self.get_grid())
 
     def close(self, save=True, save_all_fields=False, file_type="eph", simulation_name="emode"):
         CALLS.append(("close", {}))
